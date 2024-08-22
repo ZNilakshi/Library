@@ -27,7 +27,8 @@ export const authOptions = {
           }
           return null;
         } catch (err) {
-          throw new Error(err);
+          console.error("Error during credentials authorization:", err);
+          throw new Error("Authorization failed");
         }
       },
     }),
@@ -41,6 +42,7 @@ export const authOptions = {
       if (account.provider === "credentials") {
         return true;
       }
+
       if (account.provider === "google") {
         await connect();
         try {
@@ -48,32 +50,36 @@ export const authOptions = {
           if (!existingUser) {
             const newUser = new User({
               email: user.email,
-              role: 'user', // Set default role for new users
+              name: user.name,  // Include name from Google
+              image: user.image, // Include image from Google
+              role: 'user',      // Default role
             });
             await newUser.save();
-            user.role = 'user'; // Set the role for the new user
-            return true;
+            user.role = 'user';  // Set the role for the new user
           } else {
             user.role = existingUser.role; // Set the role for the existing user
-            return true;
           }
+          return true;
         } catch (err) {
-          console.log("Error saving user", err);
+          console.error("Error during Google sign-in:", err);
           return false;
         }
       }
+
       return false;
     },
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role;
+        token.role = user.role || 'user'; // Ensure role is set, with a default fallback
       }
+      console.log("JWT Callback", token);
       return token;
     },
     async session({ session, token }) {
       if (token) {
         session.user.role = token.role;
       }
+      console.log("Session Callback", session);
       return session;
     },
   },

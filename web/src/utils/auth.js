@@ -1,11 +1,6 @@
-// utils/auth.js
-import jwtDecode from 'jwt-decode';
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getServerSession } from "next-auth/next";
 
-export const getUserRole = () => {
-  if (typeof window === 'undefined') return null;
-  const token = localStorage.getItem('token');
-  if (!token) return null;
-
-  const decoded = jwtDecode(token);
-  return decoded.role;
+export const getSession = async (req, res) => {
+  return await getServerSession(req, res, authOptions);
 };

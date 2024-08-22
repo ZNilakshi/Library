@@ -1,6 +1,6 @@
-
 "use client";
 import { useState } from 'react';
+import { useRouter } from 'next/navigation'; // Import useRouter hook
 import Link from 'next/link';
 
 const RegisterPage = () => {
@@ -9,6 +9,8 @@ const RegisterPage = () => {
     email: '',
     password: ''
   });
+
+  const router = useRouter(); // Initialize useRouter
 
   const handleChange = (e) => {
     setFormData({
@@ -29,9 +31,8 @@ const RegisterPage = () => {
       });
 
       if (response.ok) {
-      
         console.log('User registered successfully');
-        // Optionally redirect to login page or show success message
+        router.push('/'); // Redirect to the main page
       } else {
         const errorData = await response.json();
         console.error('Error:', errorData.error);
@@ -43,24 +44,14 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat bg-gray-50 py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundImage: 'url(/back.jpg)' }}>
       <div className="flex max-w-4xl w-full bg-white shadow-md rounded-lg overflow-hidden">
-        <div className="hidden lg:flex lg:flex-col lg:justify-center lg:w-1/2 bg-blue-500 p-8">
-          <div className="text-white text-center">
-            <img className="mx-auto h-16 w-auto" src="/your-logo.png" alt="Your Logo" />
-            <h2 className="mt-6 text-4xl font-bold">Welcome to Spacer</h2>
-            <p className="mt-4 text-sm">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-            </p>
+        <div className="hidden lg:flex lg:flex-col lg:justify-center lg:w-1/2 bg-dark-green p-8">
+         
+          <div className="relative w-full h-full">
+            <img className="absolute inset-0 w-full h-full object-cover" src="/back.jpg" alt="Your Logo" />
           </div>
-          <div className="mt-8 flex justify-between text-sm text-white">
-            <Link href="/creator" legacyBehavior>
-              <a className="hover:underline">Creator Here</a>
-            </Link>
-            <Link href="/designer" legacyBehavior>
-              <a className="hover:underline">Designer Here</a>
-            </Link>
-          </div>
+        
         </div>
         <div className="flex-1 px-4 py-6 sm:px-8 lg:px-12">
           <div className="max-w-md w-full space-y-8 mx-auto">
@@ -93,11 +84,11 @@ const RegisterPage = () => {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center">
                   <input id="terms-and-conditions" name="terms-and-conditions" type="checkbox" required
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+                    className="h-4 w-4 text-dark-green focus:dark-green border-gray-300 rounded" />
                   <label htmlFor="terms-and-conditions" className="ml-2 block text-sm text-gray-900">
                     By Signing up, I agree with{' '}
                     <Link href="/terms" legacyBehavior>
-                      <a className="font-medium text-blue-600 hover:text-blue-500">Terms & Conditions</a>
+                      <a className="font-medium text-dark-green hover:text-dark-green">Terms & Conditions</a>
                     </Link>
                   </label>
                 </div>
@@ -105,7 +96,7 @@ const RegisterPage = () => {
 
               <div>
                 <button type="submit"
-                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-dark-green hover:bg-dark-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                   Sign Up
                 </button>
               </div>
