@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server'; // Use NextRequest for req typing
 import multer from 'multer';
 import { promisify } from 'util';
 import fs from 'fs';
@@ -6,6 +6,7 @@ import path from 'path';
 import connect from '../../../../utils/db';
 import Book from '../../../../models/Book';
 
+// Set up Multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadPath = 'public/uploads';
@@ -20,13 +21,13 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 const uploadMiddleware = promisify(upload.fields([{ name: 'coverImage' }, { name: 'pdf' }]));
 
 // GET: Fetch a single book by ID
-export const GET = async (req, { params }) => {
+export const GET = async (req: NextRequest, { params }: { params: { id: string } }) => {
   await connect();
-  const { id } = params;  // Extract bookId from the route params
+  const { id } = params;
 
   if (!id) {
     return NextResponse.json({ error: 'Book ID is required' }, { status: 400 });
@@ -47,49 +48,44 @@ export const GET = async (req, { params }) => {
 };
 
 // PUT: Update book by ID
-export const PUT = async (req, { params }) => {
+export const PUT = async (req: NextRequest, { params }: { params: { id: string } }) => {
   try {
-    // Handle file uploads
-    await uploadMiddleware(req, null);
-
-    const bookId = params.id; // Extract bookId from the URL path
-
-    if (!bookId) {
-      console.error('Book ID missing in PUT request');
-      return NextResponse.json({ error: 'Book ID is required' }, { status: 400 });
-    }
-
-    // Extract form data
     const formData = await req.formData();
-    const { title, author, description, category } = Object.fromEntries(formData.entries());
+
+    const title = formData.get('title') as string;
+    const author = formData.get('author') as string;
+    const description = formData.get('description') as string;
+    const category = formData.get('category') as string;
 
     if (!title || !author || !description || !category) {
-      console.error('Required book fields are missing');
       return NextResponse.json({ error: 'All book fields are required' }, { status: 400 });
     }
 
-    const updatedData = {
+    const updatedData: any = {
       title,
       author,
       description,
       category,
     };
 
-    // Handle uploaded files if present
     if (formData.has('coverImage')) {
       const coverImage = formData.get('coverImage');
-      updatedData.coverImageUrl = `/uploads/${coverImage.name}`;
+      if (coverImage instanceof File) {
+        updatedData.coverImageUrl = `/uploads/${coverImage.name}`;
+      }
     }
+
     if (formData.has('pdf')) {
       const pdf = formData.get('pdf');
-      updatedData.pdfUrl = `/uploads/${pdf.name}`;
+      if (pdf instanceof File) {
+        updatedData.pdfUrl = `/uploads/${pdf.name}`;
+      }
     }
 
     // Update the book in the database
-    const updatedBook = await Book.findByIdAndUpdate(bookId, updatedData, { new: true });
+    const updatedBook = await Book.findByIdAndUpdate(params.id, updatedData, { new: true });
 
     if (!updatedBook) {
-      console.error('Book not found in database');
       return NextResponse.json({ error: 'Book not found' }, { status: 404 });
     }
 
@@ -101,11 +97,11 @@ export const PUT = async (req, { params }) => {
 };
 
 // DELETE: Delete book by ID
-export const DELETE = async (req, { params }) => {
+export const DELETE = async (req: NextRequest, { params }: { params: { id: string } }) => {
   await connect();
 
   try {
-    const bookId = params.id; // Capture book ID from URL path
+    const bookId = params.id;
 
     if (!bookId) {
       console.error('Book ID is missing');
@@ -115,7 +111,6 @@ export const DELETE = async (req, { params }) => {
     // Log the bookId to ensure it is correct
     console.log(`Deleting book with ID: ${bookId}`);
 
-    // Find the book in the database
     const book = await Book.findById(bookId);
 
     if (!book) {

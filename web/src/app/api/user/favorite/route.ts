@@ -3,37 +3,47 @@ import mongoose from 'mongoose';
 import dbConnect from '../../../../utils/db';
 import User from '../../../../models/User';
 import Book from '../../../../models/Book';
+import { NextRequest, NextResponse as NextRes } from 'next/server'; // Import types
 
+// GET handler
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url); // Correct way to handle query params
+  const email = searchParams.get('email');
 
-export default async function handler(req, res) {
-  await dbConnect();
-
-  const { email } = req.query;
+  if (!email) {
+    return NextResponse.json({ message: 'Email is required' }, { status: 400 });
+  }
 
   try {
-    const user = await User.findOne({ email })
-      .populate('favorites.bookId')  // Populate the book details
-      .exec();
+    await dbConnect();
+    const user = await User.findOne({ email }).populate({
+      path: 'favorites.bookId',
+      select: 'title author category coverImageUrl pdfUrl'
+    });
 
-    if (user) {
-      const favoriteBooks = user.favorites.map(favorite => favorite.bookId); // Extract the book details
-      return res.status(200).json({ favorites: favoriteBooks });
-    } else {
-      return res.status(404).json({ message: 'User not found' });
+    if (!user) {
+      return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
-  } catch (error) {
+
+    if (!user.favorites || user.favorites.length === 0) {
+      return NextResponse.json({ message: 'No favorite books found', favorites: [] }, { status: 200 });
+    }
+
+    return NextResponse.json({ favorites: user.favorites }, { status: 200 });
+  } catch (error: unknown) { // Explicitly typing error as unknown
     console.error('Error fetching favorites:', error);
-    return res.status(500).json({ message: 'Server error' });
+    return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }
 
-export async function POST(req) {
-  await dbConnect(); // Connect to the database
+// POST handler
+export async function POST(req: NextRequest) {
+  await dbConnect();
 
   try {
     const { email, bookId } = await req.json();
     console.log('Received email:', email);
-    console.log('Received bookId:', bookId); // Log bookId to verify
+    console.log('Received bookId:', bookId); 
 
     if (!email || !bookId) {
       return NextResponse.json({ error: 'Email and Book ID are required' }, { status: 400 });
@@ -49,59 +59,23 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Book not found' }, { status: 404 });
     }
 
-    console.log('Fetched Book:', book);
-
-    // Convert bookId to ObjectId
     const bookObjectId = new mongoose.Types.ObjectId(bookId);
 
-    // Clean up the user's favorites to ensure all entries have a valid bookId
-    user.favorites = user.favorites.filter(favorite => favorite.bookId);
+    // Filter valid entries
+    user.favorites = user.favorites.filter((favorite: { bookId: mongoose.Types.ObjectId }) => favorite.bookId);
 
-    // Check if the book is already in the user's favorites
-    const alreadyFavorite = user.favorites.some(favorite => favorite.bookId?.toString() === bookObjectId.toString());
+    const alreadyFavorite = user.favorites.some((favorite: { bookId: mongoose.Types.ObjectId }) => favorite.bookId?.toString() === bookObjectId.toString());
     if (alreadyFavorite) {
       return NextResponse.json({ message: 'Book is already in favorites' }, { status: 200 });
     }
 
-    // Add the book to the user's favorites
     user.favorites.push({ bookId: bookObjectId });
-    console.log('User favorites after adding:', user.favorites);
 
     await user.save();
 
     return NextResponse.json({ message: 'Book added to favorites successfully', favorites: user.favorites }, { status: 200 });
-  } catch (error) {
+  } catch (error: unknown) { // Explicitly typing error as unknown
     console.error('Failed to add book to favorites:', error);
-    return NextResponse.json({ error: 'Failed to add book to favorites', details: error.message }, { status: 500 });
-  }
-}
-
-export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const email = searchParams.get('email');
-
-  if (!email) {
-    return NextResponse.json({ message: 'Email is required' }, { status: 400 });
-  }
-
-  try {
-    await dbConnect();
-    const user = await User.findOne({ email }).populate({
-      path: 'favorites.bookId',
-      select: 'title author category coverImageUrl pdfUrl' // Select the necessary fields
-    });
-    
-    if (!user) {
-      return NextResponse.json({ message: 'User not found' }, { status: 404 });
-    }
-
-    if (!user.favorites || user.favorites.length === 0) {
-      return NextResponse.json({ message: 'No favorite books found', favorites: [] }, { status: 200 });
-    }
-
-    return NextResponse.json({ favorites: user.favorites }, { status: 200 });
-  } catch (error) {
-    console.error('Error fetching favorites:', error);
-    return NextResponse.json({ message: 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to add book to favorites', details: (error as Error).message }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation'; // Import useRouter hook
 import Link from 'next/link';
+import Image from 'next/image';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -12,14 +13,14 @@ const RegisterPage = () => {
 
   const router = useRouter(); // Initialize useRouter
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const response = await fetch('/api/register', {
@@ -49,8 +50,7 @@ const RegisterPage = () => {
         <div className="hidden lg:flex lg:flex-col lg:justify-center lg:w-1/2 bg-dark-green p-8">
          
           <div className="relative w-full h-full">
-            <img className="absolute inset-0 w-full h-full object-cover" src="/back.jpg" alt="Your Logo" />
-          </div>
+          <Image className="absolute inset-0 w-full h-full object-cover" src="/back.jpg" alt="Your Logo" layout="fill" />  </div>
         
         </div>
         <div className="flex-1 px-4 py-6 sm:px-8 lg:px-12">

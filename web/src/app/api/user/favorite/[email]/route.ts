@@ -3,9 +3,20 @@ import mongoose from 'mongoose';
 import dbConnect from '../../../../../utils/db';
 import User from '../../../../../models/User';
 import Book from '../../../../../models/Book';
+import { NextRequest } from 'next/server'; // Import NextRequest type
+
+// Define types for params
+interface Params {
+  email: string;
+}
+
+// Define type for favorite in User model (Assuming it's a structure like { bookId: mongoose.Schema.Types.ObjectId })
+interface Favorite {
+  bookId: mongoose.Schema.Types.ObjectId;
+}
 
 // GET: Fetch all favorite books for a user by email
-export async function GET(req, { params }) {
+export async function GET(req: NextRequest, { params }: { params: Params }) {
   try {
     const email = params.email; // Get email from URL
 
@@ -32,7 +43,7 @@ export async function GET(req, { params }) {
 }
 
 // POST: Add a book to the user's favorites
-export async function POST(req, { params }) {
+export async function POST(req: NextRequest, { params }: { params: Params }) {
   await dbConnect();
   try {
     const { email, bookId } = await req.json();
@@ -56,8 +67,8 @@ export async function POST(req, { params }) {
       user.favorites = [];
     }
 
-    // Check if the book is already in the user's favorites
-    const alreadyFavorite = user.favorites.some(favorite => favorite.bookId.equals(bookId));
+    // Check if the book is already in the user's favorites using `toString()` for comparison
+    const alreadyFavorite = user.favorites.some((favorite: Favorite) => favorite.bookId.toString() === bookId.toString());
     if (alreadyFavorite) {
       return NextResponse.json({ message: 'Book is already in favorites' }, { status: 200 });
     }

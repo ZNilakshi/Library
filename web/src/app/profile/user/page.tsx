@@ -1,24 +1,43 @@
 "use client";
 
 import { useSession } from 'next-auth/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent, SyntheticEvent } from 'react';
 import axios from 'axios';
+import Image from 'next/image';
+
+interface ProfileData {
+  name: string;
+  email: string;
+  country: string;
+  favoriteBook: string;
+  profilePhoto: string | File;
+}
+
+interface FavoriteBook {
+  bookId: {
+    coverImageUrl: string;
+    title: string;
+    author: string;
+    category: string;
+    pdfUrl: string;
+  };
+}
 
 export default function UserProfile() {
   const { data: session } = useSession();
-  const [selectedTab, setSelectedTab] = useState('profile');
+  const [selectedTab, setSelectedTab] = useState<'profile' | 'favorites' | 'downloads'>('profile');
   const [isEditing, setIsEditing] = useState(false);
-  const [profileData, setProfileData] = useState({
+  const [profileData, setProfileData] = useState<ProfileData>({
     name: '',
     email: '',
     country: '',
     favoriteBook: '',
     profilePhoto: '',
   });
-  const [downloads, setDownloads] = useState([]);
-  const [favorites, setFavorites] = useState([]);
+  const [downloads, setDownloads] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteBook[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string>('');
 
   // Fetch user profile data
   useEffect(() => {
@@ -62,7 +81,6 @@ export default function UserProfile() {
       const fetchFavorites = async () => {
         try {
           const response = await axios.get(`/api/user/favorite?email=${session.user.email}`);
-          console.log("Favorites Data:", response.data.favorites); // Log the data to the console
           setFavorites(response.data.favorites);
         } catch (error) {
           console.error('Error fetching favorites:', error);
@@ -77,19 +95,20 @@ export default function UserProfile() {
     return <p>Loading...</p>;
   }
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setProfileData((prevData) => ({ ...prevData, [name]: value }));
   };
 
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
+  const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       setProfileData((prevData) => ({ ...prevData, profilePhoto: file }));
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (e: SyntheticEvent) => {
+    e.preventDefault();
     setLoading(true);
     setError('');
 
@@ -129,15 +148,17 @@ export default function UserProfile() {
         return (
           <div className="text-center">
             <div className="bg-white p-6 rounded-lg shadow-lg max-w-md mx-auto">
-              <img
-                src={
-                  profileData.profilePhoto instanceof File
-                    ? URL.createObjectURL(profileData.profilePhoto)
-                    : profileData.profilePhoto || '/default-avatar.png'
-                }
-                alt="Profile"
-                className="h-24 w-24 rounded-full mx-auto border-4 border-gray-200 mb-4"
-              />
+            <Image
+  src={
+    profileData.profilePhoto instanceof File
+      ? URL.createObjectURL(profileData.profilePhoto)
+      : profileData.profilePhoto || '/default-avatar.png'
+  }
+  alt="Profile"
+  width={100} 
+  height={100} 
+  className="h-24 w-24 rounded-full mx-auto border-4 border-gray-200 mb-4"
+/>
               {isEditing ? (
                 <div className="mt-4">
                   <input
@@ -199,12 +220,14 @@ export default function UserProfile() {
           <div className="p-4">
             <h3 className="text-2xl font-semibold mb-4">Favorite Books</h3>
             {favorites && favorites.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-3">
                 {favorites.map((favorite, index) => (
                   <div key={index} className="bg-white border rounded-lg shadow-lg overflow-hidden">
-                    <img
+                    <Image 
                       src={favorite.bookId?.coverImageUrl || '/default-cover.png'}
                       alt={favorite.bookId?.title || 'No title available'}
+                      width={500}  
+                      height={200}  
                       className="w-full h-48 object-cover"
                     />
                     <div className="p-4 flex flex-col justify-between h-48">
@@ -220,14 +243,15 @@ export default function UserProfile() {
                         </p>
                       </div>
                       {favorite.bookId?.pdfUrl && (
-                        <a
-                          href={favorite.bookId.pdfUrl}
-                          className="mt-2 inline-block bg-dark-green text-white text-center py-2 px-4 rounded-lg hover:bg-gray-500 text-dark-green transition-colors duration-300"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          View PDF
-                        </a>
+                     <a
+                     href={favorite.bookId.pdfUrl}
+                     className="mt-2 inline-block bg-dark-green text-white text-center py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors duration-300"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                   >
+                     Download PDF
+                   </a>
+                   
                       )}
                     </div>
                   </div>
@@ -243,54 +267,44 @@ export default function UserProfile() {
         return (
           <div className="p-4">
             <h3 className="text-2xl font-semibold mb-4">My Downloads</h3>
-            {/* Downloads mapping logic */}
             {downloads && downloads.length > 0 ? (
               <ul>
                 {downloads.map((download, index) => (
-                  <li key={index}>{download.title}</li>
+                  <li key={index}>{download}</li>
                 ))}
               </ul>
             ) : (
-              <p>No downloads yet.</p>
+              <p>No downloads available yet.</p>
             )}
           </div>
         );
+
       default:
         return null;
     }
   };
 
   return (
-    <div
-      className="container mx-auto px-4 py-8"
-      style={{
-        backgroundImage: `url('/back.jpg')`, // Update this with your actual image path
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        minHeight: '100vh',
-      }}
-    >
-      <h2 className="text-3xl font-bold mb-6 text-center">User Profile</h2>
-      <div className="flex justify-center space-x-4 mb-6">
-  <button
-    onClick={() => setSelectedTab('profile')}
-    className={`px-6 py-2 rounded-lg ${
-      selectedTab === 'profile' ? 'bg-gray-600 text-white' : 'bg-dark-green text-white'
-    }`}
-  >
-    Profile
-  </button>
-  <button
-    onClick={() => setSelectedTab('favorites')}
-    className={`px-6 py-2 rounded-lg ${
-      selectedTab === 'favorites' ? 'bg-gray-600 text-white' : 'bg-dark-green text-white'
-    }`}
-  >
-    Favorites
-  </button>
-</div>
-
-      <div>{renderContent()}</div>
+    <div className="container mx-auto">
+      <div className="flex justify-center mt-6">
+        <div className="w-full lg:w-1/2">
+          <div className="bg-dark-green text-white rounded-lg p-4 flex justify-around">
+          <button
+        onClick={() => setSelectedTab('profile')}
+        className={`px-4 py-2 rounded-lg ${selectedTab === 'profile' ? 'bg-gray-400' : 'bg-transparent'}`}
+      >
+        Profile
+      </button>
+      <button
+        onClick={() => setSelectedTab('favorites')}
+        className={`px-4 py-2 rounded-lg ${selectedTab === 'favorites' ? 'bg-gray-400' : 'bg-transparent'}`}
+      >
+        Favorites
+      </button>
+          </div>
+          {renderContent()}
+        </div>
+      </div>
     </div>
   );
 }

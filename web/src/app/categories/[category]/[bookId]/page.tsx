@@ -4,15 +4,30 @@ import { useSession } from 'next-auth/react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart, faDownload } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
+import Image from 'next/image'; 
 
+interface Book {
+  _id: string;
+  title: string;
+  author: string;
+  description: string;
+  category: string;
+  coverImageUrl: string;
+  backgroundImageUrl?: string;
+  pdfUrl: string;
+}
 
-export default function BookPage({ params }) {
+interface Params {
+  category: string;
+  bookId: string;
+}
+
+export default function BookPage({ params }: { params: Params }) {
   const { category, bookId } = params;
-  const [book, setBook] = useState(null);
+  const [book, setBook] = useState<Book | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);  // Track if the book is favorited
   const [loading, setLoading] = useState(true); // Track loading state
   const { data: session } = useSession();
-
 
   useEffect(() => {
     const fetchBookDetails = async () => {
@@ -21,38 +36,34 @@ export default function BookPage({ params }) {
         setBook(data.book);
         setLoading(false);
       } catch (error) {
-        console.error('Failed to fetch book details:', error.message);
+        console.error('Failed to fetch book details:', (error as Error).message);
       }
     };
-
 
     const checkIfFavorite = async () => {
       if (session) {
         try {
           const { data } = await axios.get(`/api/user/favorite?email=${session.user.email}`);
-          const favoriteBooks = data.favorites.map(fav => fav._id); // Extract book IDs
+          const favoriteBooks = data.favorites.map((fav: { _id: string }) => fav._id); // Ensure type safety
           setIsFavorite(favoriteBooks.includes(bookId)); // Check if current book is in favorites
         } catch (error) {
-          console.error('Failed to check favorites:', error.message);
+          console.error('Failed to check favorites:', (error as Error).message);
         }
       }
     };
-
 
     fetchBookDetails();
     checkIfFavorite();
   }, [bookId, session]);
 
-
   const handleDownload = async () => {
     try {
-      if (session) {
+      if (session && book) {
         await axios.post('/api/user/download', {
           email: session.user.email,
           bookId: bookId,
           bookTitle: book.title,
         });
-
 
         // Trigger the download
         const link = document.createElement('a');
@@ -65,19 +76,20 @@ export default function BookPage({ params }) {
         alert('You need to be logged in to download the book.');
       }
     } catch (error) {
-      console.error('Failed to update user downloads:', error.message);
+      console.error('Failed to update user downloads:', (error as Error).message);
     }
   };
+
   const handleAddToFavorites = async () => {
     try {
       if (session) {
         const response = await axios.post('/api/user/favorite', {
-          email: session.user.email, // User's email
-          bookId: bookId, // Ensure bookId is passed correctly here
+          email: session.user.email,
+          bookId: bookId,
         });
- 
+
         if (response.status === 200) {
-          setIsFavorite(true); // Update favorite state
+          setIsFavorite(true);
           alert('Book added to favorites successfully!');
         }
       } else {
@@ -88,22 +100,17 @@ export default function BookPage({ params }) {
       alert('Failed to add book to favorites.');
     }
   };
- 
-
 
   if (loading) {
     return <p>Loading...</p>;
   }
 
-
   if (!book) {
     return <p>Failed to load book details.</p>;
   }
 
-
   return (
     <div className="relative min-h-screen p-6 bg-gray-50 overflow-hidden">
-      {/* Background image styling */}
       <div
         style={{
           position: 'absolute',
@@ -123,9 +130,7 @@ export default function BookPage({ params }) {
         />
       </div>
 
-
       <div className="relative z-10 px-8 py-12 bg-gray-50 min-h-screen">
-        {/* Back to category navigation */}
         <div className="bg-gray-100 py-2 px-4 mb-8 rounded-lg shadow-md">
           <nav className="text-gray-600 text-sm font-semibold">
             <a href={`/categories/${category}`} className="hover:text-gray-800">
@@ -134,18 +139,18 @@ export default function BookPage({ params }) {
           </nav>
         </div>
 
-
-        {/* Book details section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 bg-white p-8 rounded-xl shadow-lg">
-          {/* Book cover image */}
           <div className="flex justify-center">
-            <img
-              src={book.coverImageUrl}
-              alt={book.title}
-              className="w-2/3 lg:w-1/3 h-auto object-contain rounded-lg"
-            />
+          <Image
+  src={book.coverImageUrl}
+  alt={book.title}
+  width={300}    // Specify a width
+  height={450}   // Specify a height
+  className="w-2/3 lg:w-1/3 h-auto object-contain rounded-lg"
+  priority       // Optional: can be used for important images to load faster
+/>
           </div>
-          {/* Book details */}
+
           <div className="flex flex-col justify-between">
             <div>
               <h1 className="text-4xl font-semibold text-gray-900 mb-6">{book.title}</h1>
@@ -158,25 +163,18 @@ export default function BookPage({ params }) {
               </p>
             </div>
 
-
-            {/* Buttons for adding to favorites and downloading */}
             {session && (
               <div className="flex space-x-6 mt-6">
-                {/* Heart icon button for adding to favorites */}
                 <button
-  onClick={handleAddToFavorites}
-  className={`flex items-center justify-center w-12 h-12
-  rounded-full shadow-md transition duration-200 ${
-    isFavorite ? 'bg-green-500' : 'bg-red-500 hover:bg-red-600'
-  }`}
->
-  <FontAwesomeIcon icon={faHeart} className="w-6 h-6 text-white" />
-</button>
+                  onClick={handleAddToFavorites}
+                  className={`flex items-center justify-center w-12 h-12
+                  rounded-full shadow-md transition duration-200 ${
+                    isFavorite ? 'bg-green-500' : 'bg-red-500 hover:bg-red-600'
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faHeart} className="w-6 h-6 text-white" />
+                </button>
 
-
-
-
-                {/* Download button */}
                 <button
                   onClick={handleDownload}
                   className="flex items-center justify-center w-12 h-12 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-600 transition duration-200"
@@ -191,7 +189,3 @@ export default function BookPage({ params }) {
     </div>
   );
 }
-
-
-
-

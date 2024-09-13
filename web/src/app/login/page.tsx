@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation'; // Import useRouter hook
 import Link from 'next/link';
+import Image from 'next/image';
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
@@ -11,14 +12,14 @@ const LoginPage = () => {
 
   const router = useRouter(); // Initialize useRouter
 
-  const handleChange = (e) => {
+  const handleChange = (e : React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const response = await fetch('/api/login', {
@@ -28,29 +29,34 @@ const LoginPage = () => {
         },
         body: JSON.stringify(formData),
       });
-
+  
       if (response.ok) {
         const data = await response.json();
         console.log('User logged in successfully');
-        // Save the token to localStorage or context
         localStorage.setItem('token', data.token);
         router.push('/main'); // Redirect to the main page
       } else {
         const errorData = await response.json();
         console.error('Error:', errorData.error);
-        // Handle errors (e.g., incorrect credentials)
       }
     } catch (error) {
       console.error('Error:', error);
     }
   };
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat bg-gray-50 py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundImage: 'url(/back.jpg)' }}>
        <div className="flex max-w-4xl w-full bg-white shadow-md rounded-lg overflow-hidden">
         <div className="hidden lg:flex lg:flex-col lg:justify-center lg:w-1/2 bg-dark-green p-8">
         <div className="relative w-full h-full">
-            <img className="absolute inset-0 w-full h-full object-cover" src="/back.jpg" alt="Your Logo" />
+        <Image
+            className="absolute inset-0 w-full h-full object-cover"
+            src="/back.jpg"
+            alt="Your Logo"
+            layout="fill"
+            objectFit="cover"
+          />
           </div>
         </div>
         <div className="flex-1 px-4 py-6 sm:px-8 lg:px-12">

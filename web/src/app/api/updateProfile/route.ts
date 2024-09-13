@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { NextApiRequest, NextApiResponse } from 'next';
 import multer from 'multer';
 import { promisify } from 'util';
 import connect from '../../../utils/db';
 import User from '../../../models/User';
+import type { IncomingMessage } from 'http';
 
 // Multer setup for file upload
 const storage = multer.diskStorage({
@@ -16,10 +18,23 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
-const uploadMiddleware = promisify(upload.single('profilePhoto'));
+
+// Custom middleware to handle Multer file uploads in Next.js
+const multerMiddleware = upload.single('profilePhoto');
+
+function runMiddleware(req: IncomingMessage & NextApiRequest, res: NextApiResponse, fn: Function) {
+  return new Promise((resolve, reject) => {
+    fn(req, res, (result: any) => {
+      if (result instanceof Error) {
+        return reject(result);
+      }
+      return resolve(result);
+    });
+  });
+}
 
 // GET: Fetch user profile data
-export const GET = async (req) => {
+export const GET = async (req: NextRequest) => {
   await connect(); // Ensure DB connection
 
   const { searchParams } = new URL(req.url);
@@ -42,13 +57,14 @@ export const GET = async (req) => {
     return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
   }
 };
+
 // PUT: Update user profile data
-export const PUT = async (req) => {
+export const PUT = async (req: NextRequest, res: NextApiResponse) => {
   await connect(); // Ensure DB connection
 
   try {
-    // Parse request with multer
-    await uploadMiddleware(req, null);
+    // Convert NextRequest to NextApiRequest and run Multer middleware
+    await runMiddleware(req as unknown as IncomingMessage & NextApiRequest, res, multerMiddleware);
 
     const formData = await req.formData();
     console.log('Form Data:', formData); // Debug log
@@ -56,7 +72,6 @@ export const PUT = async (req) => {
 
     const email = formData.get('email');
 
-   
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
@@ -65,13 +80,12 @@ export const PUT = async (req) => {
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-    
 
     const name = formData.get('name');
     const country = formData.get('country');
     const favoriteBook = formData.get('favoriteBook');
     const profilePhoto = formData.has('profilePhoto')
-      ? `/uploads/${(formData.get('profilePhoto')).name}`
+      ? `/uploads/${(formData.get('profilePhoto') as any).name}`
       : null;
 
     // Update user data
@@ -79,8 +93,6 @@ export const PUT = async (req) => {
     user.country = country || user.country;
     user.favoriteBook = favoriteBook || user.favoriteBook;
     user.profilePhoto = profilePhoto;
-    // Update profile photo if a new one is uploaded
-    
 
     await user.save();
 

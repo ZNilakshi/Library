@@ -1,12 +1,35 @@
-import NextAuth from "next-auth";
-import { Account, User as AuthUser } from "next-auth";
+import NextAuth, { NextAuthOptions, User as NextAuthUser, Account, Session } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { JWT } from "next-auth/jwt"; // Import JWT from the correct module
 import User from "@/models/User";
 import connect from "@/utils/db";
 
-export const authOptions = {
+// Extend NextAuth types to include 'role'
+// Extend NextAuth types to include 'role'
+declare module "next-auth" {
+  interface User {
+    role?: string;
+  }
+
+  interface Session {
+    user: {
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+      role?: string; // Add the role field here
+    };
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    role?: string;
+  }
+}
+
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       id: "credentials",
@@ -16,13 +39,16 @@ export const authOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        if (!credentials) {
+          throw new Error("Missing credentials");
+        }
         await connect();
         try {
           const user = await User.findOne({ email: credentials.email });
           if (user) {
             const isPasswordCorrect = await bcrypt.compare(credentials.password, user.password);
             if (isPasswordCorrect) {
-              return { ...user._doc, id: user._id }; // Ensure id is included
+              return { ...user._doc, id: user._id }; 
             }
           }
           return null;
@@ -38,26 +64,22 @@ export const authOptions = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
-      if (account.provider === "credentials") {
-        return true;
-      }
-
-      if (account.provider === "google") {
+    async signIn({ user, account }: { user: NextAuthUser; account: Account | null }) {
+      if (account?.provider === "google") {
         await connect();
         try {
           const existingUser = await User.findOne({ email: user.email });
           if (!existingUser) {
             const newUser = new User({
               email: user.email,
-              name: user.name,  // Include name from Google
-              image: user.image, // Include image from Google
-              role: 'user',      // Default role
+              name: user.name,
+              image: user.image,
+              role: "user", // Assign a default role
             });
             await newUser.save();
-            user.role = 'user';  // Set the role for the new user
+            user.role = "user";
           } else {
-            user.role = existingUser.role; // Set the role for the existing user
+            user.role = existingUser.role;
           }
           return true;
         } catch (err) {
@@ -65,21 +87,18 @@ export const authOptions = {
           return false;
         }
       }
-
       return false;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user }: { token: JWT; user?: NextAuthUser }) {
       if (user) {
-        token.role = user.role || 'user'; // Ensure role is set, with a default fallback
+        token.role = user.role || 'user'; // Add role to token if user exists
       }
-      console.log("JWT Callback", token);
       return token;
     },
-    async session({ session, token }) {
-      if (token) {
-        session.user.role = token.role;
+    async session({ session, token }: { session: Session; token: JWT }) {
+      if (session?.user) {
+        session.user.role = token.role; // Add role to session if it exists
       }
-      console.log("Session Callback", session);
       return session;
     },
   },

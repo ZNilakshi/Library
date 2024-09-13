@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import Image from 'next/image';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,10 +12,9 @@ const Navbar = () => {
   const { data: session } = useSession();
   const router = useRouter();
 
-  const handleSearch = (event) => {
+  const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     console.log('Searching for:', searchQuery);
-    // Implement actual search logic here
     router.push(`/search?query=${encodeURIComponent(searchQuery)}`);
   };
 
@@ -36,7 +36,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <img className="h-9 w-auto" src="/logo.png" alt="Your Logo" />
+              <Image src="/logo.png" alt="Your Logo" width={36} height={36} />
             </div>
             <div className="hidden md:flex space-x-8">
               <Link href="/categories" legacyBehavior>
@@ -74,10 +74,12 @@ const Navbar = () => {
           <div className="hidden md:flex items-center space-x-4">
             {session ? (
               <div className="flex items-center space-x-2">
-                <img
-                  src={session.user.image}
+                <Image
+                  src={session?.user?.image ?? '/default-image.png'}
                   alt="User Photo"
-                  className="h-8 w-8 rounded-full cursor-pointer"
+                  width={32}
+                  height={32}
+                  className="rounded-full cursor-pointer"
                   onClick={handleProfileClick}
                 />
                 <button
@@ -157,10 +159,12 @@ const Navbar = () => {
                   className="flex items-center space-x-2 mt-3 cursor-pointer"
                   onClick={handleProfileClick}
                 >
-                  <img
-                    src={session.user.image}
+                  <Image
+                    src={session?.user?.image ?? '/default-image.png'}
                     alt="User Photo"
-                    className="h-8 w-8 rounded-full"
+                    width={32}
+                    height={32}
+                    className="rounded-full"
                   />
                 </div>
                 <button
