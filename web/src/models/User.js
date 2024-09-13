@@ -26,14 +26,33 @@ const userSchema = new Schema(
       type: String,
       required: false,
     },
-    favoriteBook: {
-      type: String,
-      required: false,
-    },
     profilePhoto: {
       type: String, // URL to the photo
       required: false,
     },
+    downloads: [
+      {
+        bookId: { 
+          type: mongoose.Schema.Types.ObjectId, 
+          ref: 'Book',
+          // No need to make bookId required at the schema level, handle it in app logic if needed
+        },
+        downloadedAt: { 
+          type: Date, 
+          default: Date.now 
+        },
+      },
+    ],
+    favorites: [
+      {
+        bookId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Book',
+          // No need to make bookId required here either, handle in app logic if needed
+        },
+      },
+    ],
+    
   },
   { timestamps: true }
 );

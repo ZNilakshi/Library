@@ -1,4 +1,5 @@
 "use client";
+
 import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
@@ -7,119 +8,98 @@ export default function AdminProfile() {
   const { data: session } = useSession();
   const [selectedTab, setSelectedTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
-  const [adminData, setAdminData] = useState({
-    name: session?.user.name || '',
-    email: session?.user.email || '',
-    role: session?.user.role || 'Admin',
-    permissions: session?.user.permissions || [],
-    profilePhoto: session?.user.profilePhoto || '',
+  const [profileData, setProfileData] = useState({
+    name: '',
+    email: '',
+    country: '',
+    profilePhoto: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  
+  // States for Books Management
   const [books, setBooks] = useState([]);
+  const [editBookId, setEditBookId] = useState(null);
   const [newBook, setNewBook] = useState({
-    name: '',
     title: '',
-    description: '',
-    category: '',
     author: '',
-    coverPhoto: '',
+    description: '',
+    category: 'Fiction',
+    coverImage: null,
     pdf: null,
   });
+  const [bookLoading, setBookLoading] = useState(false);
+  const [bookError, setBookError] = useState('');
+  const [bookSuccess, setBookSuccess] = useState('');
+  const [fetchBooksLoading, setFetchBooksLoading] = useState(true);
 
   useEffect(() => {
-    if (selectedTab === 'manageBooks') {
-      fetchBooks();
+    if (session) {
+      // Fetch admin details and related data
+      const fetchAdminProfile = async () => {
+        try {
+          // Fetch profile data
+          const profileResponse = await axios.get('/api/updateProfile', {
+            params: { email: session.user.email },
+          });
+          setProfileData(profileResponse.data.user);
+
+          // Fetch books
+          const booksResponse = await axios.get('/api/books', {
+            params: { adminEmail: session.user.email },
+          });
+          setBooks(booksResponse.data.books);
+        } catch (error) {
+          console.error('Error fetching admin data:', error);
+          setError('Failed to load admin data. Please try again.');
+        } finally {
+          setFetchBooksLoading(false);
+        }
+      };
+      fetchAdminProfile();
     }
-  }, [selectedTab]);
+  }, [session]);
+
+  if (!session) {
+    return <p>Loading...</p>;
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewBook({ ...newBook, [name]: value });
-  };
-
-  const handleBookPhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const photoURL = URL.createObjectURL(file);
-      setNewBook({ ...newBook, coverPhoto: photoURL });
-    }
-  };
-
-  const handleBookPDFChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setNewBook({ ...newBook, pdf: file });
-    }
-  };
-
-  const handleAddBook = async () => {
-    setLoading(true);
-    setError('');
-    const formData = new FormData();
-    Object.keys(newBook).forEach((key) => {
-      if (key === 'pdf' && newBook[key]) {
-        formData.append(key, newBook[key]);
-      } else if (key !== 'pdf') {
-        formData.append(key, newBook[key]);
-      }
-    });
-
-    try {
-      const response = await axios.post('/api/addBook', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      console.log('Book added successfully:', response.data);
-      setNewBook({ name: '', title: '', description: '', category: '', author: '', coverPhoto: '', pdf: null });
-      fetchBooks();
-    } catch (error) {
-      console.error('Error adding book:', error);
-      setError('Failed to add book. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchBooks = async () => {
-    try {
-      const response = await axios.get('/api/getBooks');
-      setBooks(response.data);
-    } catch (error) {
-      console.error('Error fetching books:', error);
-    }
+    setProfileData({ ...profileData, [name]: value });
   };
 
   const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const formData = new FormData();
-      formData.append('profilePhoto', file);
-
-      try {
-        setLoading(true);
-        const response = await axios.put('/api/updateProfile', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        setProfileData({ ...profileData, profilePhoto: response.data.user.profilePhoto });
-      } catch (error) {
-        console.error('Error uploading photo:', error);
-        setError('Failed to upload photo. Please try again.');
-      } finally {
-        setLoading(false);
-      }
+      setProfileData({ ...profileData, profilePhoto: file });
     }
   };
 
   const handleSave = async () => {
     setLoading(true);
     setError('');
+    const formData = new FormData();
+    formData.append('name', profileData.name);
+    formData.append('email', profileData.email);
+    formData.append('country', profileData.country);
+
+    if (profileData.profilePhoto instanceof File) {
+      formData.append('profilePhoto', profileData.profilePhoto);
+    }
+
     try {
-      await axios.put('/api/updateProfile', profileData);
+      const response = await axios.put('/api/updateProfile', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setProfileData({
+        ...profileData,
+        profilePhoto: response.data.user.profilePhoto,
+      });
       setIsEditing(false);
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -128,204 +108,395 @@ export default function AdminProfile() {
       setLoading(false);
     }
   };
+
+  // Handlers for Books Management
+  const handleBookChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === 'coverImage' || name === 'pdf') {
+      setNewBook({ ...newBook, [name]: files[0] });
+    } else {
+      setNewBook({ ...newBook, [name]: value });
+    }
+  };
+
+  const handleAddBook = async (e) => {
+    e.preventDefault();
+    setBookLoading(true);
+    setBookError('');
+    setBookSuccess('');
+
+    const formData = new FormData();
+    formData.append('title', newBook.title);
+    formData.append('author', newBook.author);
+    formData.append('description', newBook.description);
+    formData.append('category', newBook.category);
+    if (newBook.coverImage) {
+      formData.append('coverImage', newBook.coverImage);
+    }
+    if (newBook.pdf) {
+      formData.append('pdf', newBook.pdf);
+    }
+    formData.append('adminEmail', session.user.email);
+
+    try {
+      const response = await axios.post('/api/books', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setBooks([response.data.book, ...books]);
+      setNewBook({
+        title: '',
+        author: '',
+        description: '',
+        category: 'Fiction',
+        coverImage: null,
+        pdf: null,
+      });
+      setBookSuccess('Book added successfully!');
+    } catch (error) {
+      console.error('Error adding book:', error);
+      setBookError('Failed to add book. Please try again.');
+    } finally {
+      setBookLoading(false);
+      // Clear success message after a delay
+      setTimeout(() => setBookSuccess(''), 3000);
+    }
+  };
+
+  const handleEditBook = (bookId) => {
+    const bookToEdit = books.find((book) => book._id === bookId);
+    setNewBook({
+      title: bookToEdit.title,
+      author: bookToEdit.author,
+      description: bookToEdit.description,
+      category: bookToEdit.category,
+      coverImage: null,
+      pdf: null,
+    });
+    setEditBookId(bookId);
+  };
+
+  const handleUpdateBook = async (e) => {
+    e.preventDefault();
+    setBookLoading(true);
+    setBookError('');
+    setBookSuccess('');
+
+    const formData = new FormData();
+    formData.append('title', newBook.title);
+    formData.append('author', newBook.author);
+    formData.append('description', newBook.description);
+    formData.append('category', newBook.category);
+    if (newBook.coverImage) {
+      formData.append('coverImage', newBook.coverImage);
+    }
+    if (newBook.pdf) {
+      formData.append('pdf', newBook.pdf);
+    }
+
+    try {
+      const response = await axios.put(`/api/books/${editBookId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      const updatedBooks = books.map((book) =>
+        book._id === editBookId ? response.data.book : book
+      );
+      setBooks(updatedBooks);
+      setEditBookId(null);
+      setNewBook({
+        title: '',
+        author: '',
+        description: '',
+        category: 'Fiction',
+        coverImage: null,
+        pdf: null,
+      });
+      setBookSuccess('Book updated successfully!');
+    } catch (error) {
+      console.error('Error updating book:', error);
+      setBookError('Failed to update book. Please try again.');
+    } finally {
+      setBookLoading(false);
+      setTimeout(() => setBookSuccess(''), 3000);
+    }
+  };
+
+  const handleDeleteBook = async (bookId) => {
+    try {
+      await axios.delete(`/api/books/${bookId}`);
+      setBooks(books.filter((book) => book._id !== bookId));
+    } catch (error) {
+      console.error('Error deleting book:', error);
+      setBookError('Failed to delete book. Please try again.');
+    }
+  };
+  
+
   const renderContent = () => {
     switch (selectedTab) {
       case 'profile':
         return (
-          <div className="flex flex-col items-center">
-            <h3 className="text-xl font-semibold mb-4">Admin Profile</h3>
+          <div className="text-center">
             <img
-              src={adminData.profilePhoto}
+              src={
+                profileData.profilePhoto instanceof File
+                  ? URL.createObjectURL(profileData.profilePhoto)
+                  : profileData.profilePhoto || '/default-avatar.png'
+              }
               alt="Profile"
-              className="h-24 w-24 rounded-full mb-4 border-4 border-gray-200"
+              className="h-24 w-24 rounded-full mx-auto border-4 border-gray-200 mb-4"
             />
             {isEditing ? (
-              <div className="flex flex-col items-center space-y-4">
-                <h4 className="text-lg font-semibold mb-2">Edit Profile</h4>
+              <div className="mt-4">
                 <input
                   type="text"
                   name="name"
-                  value={adminData.name}
+                  value={profileData.name}
                   onChange={handleInputChange}
                   placeholder="Name"
-                  className="border rounded p-2 w-full"
-                />
-                <input
-                  type="email"
-                  name="email"
-                  value={adminData.email}
-                  onChange={handleInputChange}
-                  placeholder="Email"
-                  className="border rounded p-2 w-full"
+                  className="border border-gray-300 rounded-lg p-2 w-full mt-2"
                 />
                 <input
                   type="text"
-                  name="role"
-                  value={adminData.role}
+                  name="country"
+                  value={profileData.country}
                   onChange={handleInputChange}
-                  placeholder="Role"
-                  className="border rounded p-2 w-full"
+                  placeholder="Country"
+                  className="border border-gray-300 rounded-lg p-2 w-full mt-2"
                 />
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handlePhotoChange}
-                  className="border rounded p-2 w-full"
+                  className="border border-gray-300 rounded-lg p-2 w-full mt-2"
                 />
                 {loading ? (
                   <p>Saving...</p>
                 ) : (
-                  <button onClick={handleSave} className="bg-dark-green text-white px-4 py-2 rounded">
+                  <button
+                    onClick={handleSave}
+                    className="bg-dark-green text-white px-6 py-2 rounded-lg mt-4"
+                  >
                     Save
                   </button>
                 )}
-                {error && <p className="text-red-500">{error}</p>}
+                {error && <p className="text-red-500 mt-2">{error}</p>}
               </div>
             ) : (
-              <div className="text-center">
-                <p>Name: {adminData.name}</p>
-                <p>Email: {adminData.email}</p>
-                <p>Role: {adminData.role}</p>
-                <button onClick={() => setIsEditing(true)} className="bg-dark-green text-white px-4 py-2 rounded mt-4">
-                  Edit
+              <div className="mt-4">
+                <p className="text-lg font-semibold">{profileData.name}</p>
+                <p className="text-gray-600">{profileData.email}</p>
+                <p className="text-gray-600">{profileData.country}</p>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="bg-dark-green text-white px-6 py-2 rounded-lg mt-4"
+                >
+                  Edit Profile
                 </button>
               </div>
             )}
           </div>
         );
-      case 'manageUsers':
+      case 'books':
         return (
           <div>
-            <h3 className="text-xl font-semibold mb-4">Manage Users</h3>
-            <p>Manage the user accounts here.</p>
-            {/* Implement user management functionalities here */}
-          </div>
-        );
-      case 'siteSettings':
-        return (
-          <div>
-            <h3 className="text-xl font-semibold mb-4">Site Settings</h3>
-            <p>Configure site settings here.</p>
-            {/* Implement site settings functionalities here */}
-          </div>
-        );
-      case 'manageBooks':
-        return (
-          <div>
-            <h3 className="text-xl font-semibold mb-4">Manage Books</h3>
-            <div className="mb-6">
-              <h4 className="text-lg font-semibold mb-2">Add New Book</h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Book Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={newBook.name}
-                    onChange={handleInputChange}
-                    placeholder="Enter book name"
-                    className="border rounded p-2 w-full mb-2"
-                  />
+         <div className="flex justify-center items-center min-h-screen">
+  <div className="mt-8 w-full max-w-lg">
+    <h2 className="text-xl font-semibold mb-4">Add New Book</h2>
+    <form onSubmit={handleAddBook}>
+      <input
+        type="text"
+        name="title"
+        value={newBook.title}
+        onChange={handleBookChange}
+        placeholder="Book Title"
+        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+        required
+      />
+      <input
+        type="text"
+        name="author"
+        value={newBook.author}
+        onChange={handleBookChange}
+        placeholder="Author"
+        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+        required
+      />
+      <textarea
+        name="description"
+        value={newBook.description}
+        onChange={handleBookChange}
+        placeholder="Description"
+        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+        required
+      />
+      <select
+        name="category"
+        value={newBook.category}
+        onChange={handleBookChange}
+        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+        required
+      >
+        <option value="fiction">Fiction</option>
+        <option value="non-fiction">Non-fiction</option>
+        <option value="science">Science</option>
+        <option value="history">History</option>
+        <option value="biography">Biography</option>
+        <option value="fantasy">Fantasy</option>
+        <option value="mystery">Mystery</option>
+        <option value="romance">Romance</option>
+        <option value="horror">Horror</option>
+        <option value="other">Other</option>
+      </select>
+      <input
+        type="file"
+        name="coverImage"
+        accept="image/*"
+        onChange={handleBookChange}
+        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+      />
+      <input
+        type="file"
+        name="pdf"
+        accept="application/pdf"
+        onChange={handleBookChange}
+        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+      />
+      <button
+        type="submit"
+        className="bg-dark-green text-white px-6 py-2 rounded-lg mt-4 w-full"
+        disabled={bookLoading}
+      >
+        {bookLoading ? 'Adding...' : 'Add Book'}
+      </button>
+      {bookError && <p className="text-red-500 mt-2">{bookError}</p>}
+      {bookSuccess && <p className="text-green-500 mt-2">{bookSuccess}</p>}
+    </form>
+  </div>
+</div>
+
+            <h2 className="text-xl font-semibold mb-4">Books</h2>
+            {bookError && <p className="text-red-500 mb-4">{bookError}</p>}
+            {bookSuccess && <p className="text-green-500 mb-4">{bookSuccess}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {books.map((book) => (
+                <div key={book._id} className="border rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                  {editBookId === book._id ? (
+                    <form onSubmit={handleUpdateBook}>
+                      <input
+                        type="text"
+                        name="title"
+                        value={newBook.title}
+                        onChange={handleBookChange}
+                        placeholder="Book Title"
+                        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+                        required
+                      />
+                      <input
+                        type="text"
+                        name="author"
+                        value={newBook.author}
+                        onChange={handleBookChange}
+                        placeholder="Author"
+                        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+                        required
+                      />
+                      <textarea
+                        name="description"
+                        value={newBook.description}
+                        onChange={handleBookChange}
+                        placeholder="Description"
+                        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+                        required
+                      />
+                      <select
+                        name="category"
+                        value={newBook.category}
+                        onChange={handleBookChange}
+                        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+                        required
+                      >
+                        <option value="fiction">Fiction</option>
+                        <option value="non-fiction">Non-fiction</option>
+                        <option value="science">Science</option>
+                        <option value="history">History</option>
+                        <option value="biography">Biography</option>
+                        <option value="fantasy">Fantasy</option>
+                        <option value="mystery">Mystery</option>
+                        <option value="romance">Romance</option>
+                        <option value="horror">Horror</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <input
+                        type="file"
+                        name="coverImage"
+                        accept="image/*"
+                        onChange={handleBookChange}
+                        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+                      />
+                      <input
+                        type="file"
+                        name="pdf"
+                        accept="application/pdf"
+                        onChange={handleBookChange}
+                        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+                      />
+                      <button
+                        type="submit"
+                        className="bg-dark-green text-white px-6 py-2 rounded-lg mt-4"
+                        disabled={bookLoading}
+                      >
+                        {bookLoading ? 'Saving...' : 'Save'}
+                      </button>
+                    </form>
+                  ) : (
+                    <>
+                      <img
+                        src={book.coverImageUrl}
+                        alt="Cover"
+                        className="h-48 w-full object-cover"
+                      />
+                      <div className="p-4">
+                        <h4 className="font-semibold text-lg mb-2">{book.title}</h4>
+                        <p className="text-gray-600 mb-1"><strong>Author:</strong> {book.author}</p>
+                        <p className="text-gray-500 text-sm mb-2"><strong>Category:</strong> {book.category}</p>
+                        
+                        {book.pdfUrl && (
+                          <div className="mt-2">
+                            <a
+                              href={book.pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-dark-green underline"
+                            >
+                              View PDF
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex justify-between p-4">
+                        <button
+                          onClick={() => handleEditBook(book._id)}
+                          className="bg-blue-500 text-white px-4 py-2 rounded-lg"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteBook(book._id)}
+                          className="bg-red-500 text-white px-4 py-2 rounded-lg"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Title</label>
-                  <input
-                    type="text"
-                    name="title"
-                    value={newBook.title}
-                    onChange={handleInputChange}
-                    placeholder="Enter title"
-                    className="border rounded p-2 w-full mb-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
-                    name="description"
-                    value={newBook.description}
-                    onChange={handleInputChange}
-                    placeholder="Enter description"
-                    className="border rounded p-2 w-full mb-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Category</label>
-                  <select
-                    name="category"
-                    value={newBook.category}
-                    onChange={handleInputChange}
-                    className="border rounded p-2 w-full mb-2"
-                  >
-                    <option value="">Select a category</option>
-                    <option value="fiction">Fiction</option>
-                    <option value="non-fiction">Non-Fiction</option>
-                    <option value="science">Science</option>
-                    <option value="history">History</option>
-                    <option value="biography">Biography</option>
-                    <option value="fantasy">Fantasy</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Author</label>
-                  <input
-                    type="text"
-                    name="author"
-                    value={newBook.author}
-                    onChange={handleInputChange}
-                    placeholder="Enter author"
-                    className="border rounded p-2 w-full mb-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Cover Photo</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleBookPhotoChange}
-                    className="border rounded p-2 w-full mb-2"
-                  />
-                  {newBook.coverPhoto && <img src={newBook.coverPhoto} alt="Cover Preview" className="h-24 w-24 rounded mt-2" />}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">PDF</label>
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleBookPDFChange}
-                    className="border rounded p-2 w-full mb-2"
-                  />
-                </div>
-                {loading ? (
-                  <p>Adding...</p>
-                ) : (
-                  <button onClick={handleAddBook} className="bg-dark-green text-white px-4 py-2 rounded">
-                    Add Book
-                  </button>
-                )}
-                {error && <p className="text-red-500">{error}</p>}
-              </div>
+              ))}
             </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-2">Book List</h4>
-              <ul>
-                {books.map((book) => (
-                  <li key={book._id} className="mb-2">
-                    <div className="flex flex-col items-start">
-                      <h5 className="text-md font-bold">{book.title}</h5>
-                      <p>{book.description}</p>
-                      <p>Author: {book.author}</p>
-                      <p>Category: {book.category}</p>
-                      {book.coverPhoto && <img src={book.coverPhoto} alt={book.title} className="h-24 w-24 rounded mb-2" />}
-                      {book.pdf && (
-                        <a href={`/pdfs/${book.pdf}`} target="_blank" className="text-dark-green underline">
-                          View PDF
-                        </a>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+           
           </div>
         );
       default:
@@ -334,43 +505,34 @@ export default function AdminProfile() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row items-start p-8 bg-gray-100 text-gray-900 rounded-lg w-full max-w-4xl mx-auto">
-      {/* Left Section */}
-      <div className="md:w-1/2 w-full bg-dark-green text-white p-4 rounded-lg flex flex-col items-start space-y-4">
-        <img
-          src={adminData.profilePhoto}
-          alt="Profile"
-          className="h-24 w-24 rounded-full mb-4 border-4 border-white"
-        />
-        <button
-          onClick={() => setSelectedTab('profile')}
-          className={`w-full text-left px-4 py-2 rounded ${selectedTab === 'profile' ? 'bg-dark-green' : 'bg-gray-600'}`}
-        >
-          Profile
-        </button>
-        <button
-          onClick={() => setSelectedTab('manageUsers')}
-          className={`w-full text-left px-4 py-2 rounded ${selectedTab === 'manageUsers' ? 'bg-dark-green' : 'bg-gray-600'}`}
-        >
-          Manage Users
-        </button>
-        <button
-          onClick={() => setSelectedTab('siteSettings')}
-          className={`w-full text-left px-4 py-2 rounded ${selectedTab === 'siteSettings' ? 'bg-dark-green' : 'bg-gray-600'}`}
-        >
-          Site Settings
-        </button>
-        <button
-          onClick={() => setSelectedTab('manageBooks')}
-          className={`w-full text-left px-4 py-2 rounded ${selectedTab === 'manageBooks' ? 'bg-dark-green' : 'bg-gray-600'}`}
-        >
-        Manage Books
-        </button>
+    <div className="container mx-auto px-4 py-8"
+    style={{
+      backgroundImage: `url('/back.jpg')`, // Update this with your actual image path
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      minHeight: '100vh',
+    }}>
+      <div className="text-center mb-6">
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
       </div>
-      {/* Right Section */}
-      <div className="md:w-2/3 w-full bg-white p-6 rounded-lg shadow-lg mt-6 md:mt-0 md:ml-6">
+      <div className="bg-white p-6 rounded-lg shadow-lg">
+        <div className="flex justify-center mb-4">
+          <button
+            onClick={() => setSelectedTab('profile')}
+            className={`px-4 py-2 rounded-lg mr-2 ${selectedTab === 'profile' ? 'bg-dark-green text-white' : 'bg-gray-200'}`}
+          >
+            Profile
+          </button>
+          <button
+            onClick={() => setSelectedTab('books')}
+            className={`px-4 py-2 rounded-lg ${selectedTab === 'books' ? 'bg-dark-green text-white' : 'bg-gray-200'}`}
+          >
+            Books
+          </button>
+        </div>
         {renderContent()}
       </div>
     </div>
   );
 }
+

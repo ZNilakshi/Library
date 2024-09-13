@@ -3,14 +3,12 @@ import mongoose from 'mongoose';
 const BookSchema = new mongoose.Schema({
   title: { type: String, required: true },
   author: { type: String, required: true },
-  genre: { type: String, required: true },
-  publishedDate: { type: Date, required: true },
-  description: { type: String }, // Optional field for book description
-  category: { type: String }, // Optional field for book category
-  coverPhoto: { type: String }, // URL or path to the cover photo
-  pdf: { type: String }, // URL or path to the PDF file
-}, { timestamps: true });
+  description: { type: String, required: true },
+  category: { type: String, required: true },
+  coverImageUrl: { type: String },
+  pdfUrl: { type: String },
+  adminEmail: { type: String, required: true }, // To relate the book to the admin
+  createdAt: { type: Date, default: Date.now },
+});
 
-const Book = mongoose.models.Book || mongoose.model('Book', BookSchema);
-
-export default Book;
+export default mongoose.models.Book || mongoose.model('Book', BookSchema);
