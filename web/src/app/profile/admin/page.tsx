@@ -239,7 +239,7 @@ export default function AdminProfile() {
     switch (selectedTab) {
       case 'profile':
         return (
-          <div className="text-center">
+          <div className="text-center bg-white p-6 rounded-lg shadow-lg shadow-lg max-w-md mx-auto">
             <img
               src={
                 profileData.profilePhoto instanceof File
@@ -247,7 +247,7 @@ export default function AdminProfile() {
                   : profileData.profilePhoto || '/default-avatar.png'
               }
               alt="Profile"
-              className="h-24 w-24 rounded-full mx-auto border-4 border-gray-200 mb-4"
+              className="h-24 w-24  rounded-full mx-auto border-4 border-gray-200 mb-4"
             />
             {isEditing ? (
               <div className="mt-4">
@@ -304,7 +304,7 @@ export default function AdminProfile() {
         return (
           <div>
          <div className="flex justify-center items-center min-h-screen">
-  <div className="mt-8 w-full max-w-lg">
+  <div className="mt-3 w-full bg-white p-6 shadow-lg max-w-md mx-auto max-w-lg ">
     <h2 className="text-xl font-semibold mb-4">Add New Book</h2>
     <form onSubmit={handleAddBook}>
       <input
@@ -383,7 +383,7 @@ export default function AdminProfile() {
             {bookSuccess && <p className="text-green-500 mb-4">{bookSuccess}</p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {books.map((book) => (
-                <div key={book._id} className="border rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                <div key={book._id} className="bg-white  border rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
                   {editBookId === book._id ? (
                     <form onSubmit={handleUpdateBook}>
                       <input
@@ -512,11 +512,11 @@ export default function AdminProfile() {
       backgroundPosition: 'center',
       minHeight: '100vh',
     }}>
-      <div className="text-center mb-6">
+      <div className="text-center mb-6 ">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
       </div>
-      <div className="bg-white p-6 rounded-lg shadow-lg">
-        <div className="flex justify-center mb-4">
+      <div className=" p-6 rounded-lg shadow-lg">
+        <div className=" flex justify-center mb-4">
           <button
             onClick={() => setSelectedTab('profile')}
             className={`px-4 py-2 rounded-lg mr-2 ${selectedTab === 'profile' ? 'bg-dark-green text-white' : 'bg-gray-200'}`}
