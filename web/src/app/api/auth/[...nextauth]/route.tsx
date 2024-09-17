@@ -2,11 +2,10 @@ import NextAuth, { NextAuthOptions, User as NextAuthUser, Account, Session } fro
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { JWT } from "next-auth/jwt"; // Import JWT from the correct module
+import { JWT } from "next-auth/jwt";
 import User from "@/models/User";
 import connect from "@/utils/db";
 
-// Extend NextAuth types to include 'role'
 // Extend NextAuth types to include 'role'
 declare module "next-auth" {
   interface User {
@@ -18,7 +17,7 @@ declare module "next-auth" {
       name?: string | null;
       email?: string | null;
       image?: string | null;
-      role?: string; // Add the role field here
+      role?: string;
     };
   }
 }
@@ -48,7 +47,7 @@ export const authOptions: NextAuthOptions = {
           if (user) {
             const isPasswordCorrect = await bcrypt.compare(credentials.password, user.password);
             if (isPasswordCorrect) {
-              return { ...user._doc, id: user._id }; 
+              return { ...user._doc, id: user._id };
             }
           }
           return null;
@@ -74,7 +73,7 @@ export const authOptions: NextAuthOptions = {
               email: user.email,
               name: user.name,
               image: user.image,
-              role: "user", // Assign a default role
+              role: "user", // Default role
             });
             await newUser.save();
             user.role = "user";
@@ -87,7 +86,7 @@ export const authOptions: NextAuthOptions = {
           return false;
         }
       }
-      return false;
+      return true; // Always return true to allow sign-in with credentials
     },
     async jwt({ token, user }: { token: JWT; user?: NextAuthUser }) {
       if (user) {
