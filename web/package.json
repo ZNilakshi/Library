@@ -13,7 +13,7 @@
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@heroicons/react": "^2.1.5",
-    "@material-ui/icons": "^4.11.3",
+    
     "axios": "^1.7.4",
     "bcryptjs": "^2.4.3",
     "formidable": "^3.5.1",
