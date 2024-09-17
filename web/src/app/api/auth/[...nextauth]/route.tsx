@@ -47,10 +47,13 @@ export const authOptions: NextAuthOptions = {
           if (user) {
             const isPasswordCorrect = await bcrypt.compare(credentials.password, user.password);
             if (isPasswordCorrect) {
-              return { ...user._doc, id: user._id };
+              return { ...user._doc, id: user._id }; // Spread the user document and add the 'id'
+            } else {
+              throw new Error("Invalid password");
             }
+          } else {
+            throw new Error("No user found with this email");
           }
-          return null;
         } catch (err) {
           console.error("Error during credentials authorization:", err);
           throw new Error("Authorization failed");
@@ -58,8 +61,8 @@ export const authOptions: NextAuthOptions = {
       },
     }),
     GoogleProvider({
-      clientId: process.env.GOOGLE_ID ?? "",
-      clientSecret: process.env.GOOGLE_SECRET ?? "",
+      clientId: process.env.GOOGLE_ID || "",
+      clientSecret: process.env.GOOGLE_SECRET || "",
     }),
   ],
   callbacks: {
@@ -76,9 +79,9 @@ export const authOptions: NextAuthOptions = {
               role: "user", // Default role
             });
             await newUser.save();
-            user.role = "user";
+            user.role = "user"; // Assign default role to new Google user
           } else {
-            user.role = existingUser.role;
+            user.role = existingUser.role; // Set role from the existing user data
           }
           return true;
         } catch (err) {
@@ -86,17 +89,17 @@ export const authOptions: NextAuthOptions = {
           return false;
         }
       }
-      return true; // Always return true to allow sign-in with credentials
+      return true; // Return true to allow credential-based sign-in
     },
     async jwt({ token, user }: { token: JWT; user?: NextAuthUser }) {
       if (user) {
-        token.role = user.role || 'user'; // Add role to token if user exists
+        token.role = user.role || 'user'; // Add user role to JWT token
       }
       return token;
     },
     async session({ session, token }: { session: Session; token: JWT }) {
       if (session?.user) {
-        session.user.role = token.role; // Add role to session if it exists
+        session.user.role = token.role; // Add role to session
       }
       return session;
     },
@@ -104,5 +107,6 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-export const handler = NextAuth(authOptions);
+// Export the NextAuth handler with GET and POST methods
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
