@@ -47,13 +47,9 @@ export const authOptions: NextAuthOptions = {
           if (user) {
             const isPasswordCorrect = await bcrypt.compare(credentials.password, user.password);
             if (isPasswordCorrect) {
-<<<<<<< HEAD
               return { ...user._doc, id: user._id }; // Spread the user document and add the 'id'
             } else {
               throw new Error("Invalid password");
-=======
-              return { ...user._doc, id: user._id };
->>>>>>> c33abf4adc5faaee542cfcb7f7e46a7aa162d2d5
             }
           } else {
             throw new Error("No user found with this email");
@@ -93,11 +89,7 @@ export const authOptions: NextAuthOptions = {
           return false;
         }
       }
-<<<<<<< HEAD
       return true; // Return true to allow credential-based sign-in
-=======
-      return true; // Always return true to allow sign-in with credentials
->>>>>>> c33abf4adc5faaee542cfcb7f7e46a7aa162d2d5
     },
     async jwt({ token, user }: { token: JWT; user?: NextAuthUser }) {
       if (user) {
