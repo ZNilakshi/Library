@@ -1,34 +1,30 @@
-import NextAuth, { NextAuthOptions, User as NextAuthUser, Account, Session } from "next-auth";
+import NextAuth from "next-auth";
+import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { JWT } from "next-auth/jwt";
 import User from "@/models/User";
 import connect from "@/utils/db";
 
-// Extend NextAuth types to include 'role'
 declare module "next-auth" {
-  interface User {
-    role?: string;
-  }
-
   interface Session {
     user: {
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-      role?: string;
+      name: string;
+      image: string;
+      id: string;
+      email: string;
+      role: string;  // Add role to the session type
     };
   }
-}
 
-declare module "next-auth/jwt" {
-  interface JWT {
-    role?: string;
+  interface User {
+    id: string;
+    email: string;
+    role: string;  // Add role to the user type
   }
 }
-
-export const authOptions: NextAuthOptions = {
+// Auth options configuration
+const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       id: "credentials",
@@ -39,67 +35,79 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials) {
-          throw new Error("Missing credentials");
+          return null;
         }
-        await connect();
+
+        await connect();  // Ensure DB is connected
+
         try {
           const user = await User.findOne({ email: credentials.email });
+
           if (user) {
             const isPasswordCorrect = await bcrypt.compare(credentials.password, user.password);
             if (isPasswordCorrect) {
-              return { ...user._doc, id: user._id }; // Spread the user document and add the 'id'
-            } else {
-              throw new Error("Invalid password");
+              return { ...user._doc, id: user._id }; // Ensure id is included
             }
-          } else {
-            throw new Error("No user found with this email");
           }
+          return null; // Return null if user not found or incorrect password
         } catch (err) {
-          console.error("Error during credentials authorization:", err);
-          throw new Error("Authorization failed");
+          throw new Error(err instanceof Error ? err.message : "Unknown error during authentication");
         }
       },
     }),
     GoogleProvider({
-      clientId: process.env.GOOGLE_ID || "",
-      clientSecret: process.env.GOOGLE_SECRET || "",
+      clientId: process.env.GOOGLE_ID ?? "",
+      clientSecret: process.env.GOOGLE_SECRET ?? "",
     }),
   ],
   callbacks: {
-    async signIn({ user, account }: { user: NextAuthUser; account: Account | null }) {
-      if (account?.provider === "google") {
-        await connect();
+    async signIn({ user, account }) {
+      // Ensure account is not null or undefined before proceeding
+      if (!account) {
+        return false;
+      }
+
+      await connect();
+
+      if (account.provider === "credentials") {
+        return true;
+      }
+
+      if (account.provider === "google") {
         try {
           const existingUser = await User.findOne({ email: user.email });
+          
           if (!existingUser) {
             const newUser = new User({
               email: user.email,
-              name: user.name,
-              image: user.image,
-              role: "user", // Default role
+              role: "user", // Assign default role to new users
             });
             await newUser.save();
-            user.role = "user"; // Assign default role to new Google user
+            user.role = "user"; // Assign role to the session user
           } else {
-            user.role = existingUser.role; // Set role from the existing user data
+            user.role = existingUser.role; // Existing user keeps their role
           }
+          
           return true;
-        } catch (err) {
-          console.error("Error during Google sign-in:", err);
+        } catch (error) {
+          console.error("Error in Google sign-in:", error);
           return false;
         }
       }
-      return true; // Return true to allow credential-based sign-in
+
+      return false;
     },
-    async jwt({ token, user }: { token: JWT; user?: NextAuthUser }) {
+    async jwt({ token, user }) {
+      // Include role information in the token if the user exists
       if (user) {
-        token.role = user.role || 'user'; // Add user role to JWT token
+        token.role = user.role;
       }
       return token;
     },
-    async session({ session, token }: { session: Session; token: JWT }) {
-      if (session?.user) {
-        session.user.role = token.role; // Add role to session
+    async session({ session, token }) {
+      // Attach role to the session user
+      if (token) {
+        session.user.role = token.role as string;
       }
       return session;
     },
@@ -107,6 +115,6 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-// Export the NextAuth handler with GET and POST methods
+// Export the handler to be used with the app directory routing in Next.js 13+
 const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
