@@ -3,6 +3,8 @@ import multer from 'multer';
 import { promisify } from 'util';
 import connect from '../../../utils/db';
 import Book from '../../../models/Book';
+import { Request, ParamsDictionary } from 'express-serve-static-core';
+import { ParsedQs } from 'qs';
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
@@ -20,7 +22,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 const uploadMiddleware = promisify(upload.fields([{ name: 'coverImage' }, { name: 'pdf' }]));
 
-export const GET = async (req) => {
+export const GET = async (req: { url: string | URL; }) => {
   await connect();
   const { searchParams } = new URL(req.url);
   const adminEmail = searchParams.get('adminEmail');
@@ -42,7 +44,7 @@ export const GET = async (req) => {
   }
 };
 
-export const POST = async (req) => {
+export const POST = async (req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>) => {
   await connect();
   try {
     await uploadMiddleware(req, null);
@@ -82,7 +84,7 @@ export const POST = async (req) => {
   }
 };
 
-export const PUT = async (req) => {
+export const PUT = async (req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>) => {
   await connect();
 
   try {
@@ -121,7 +123,7 @@ export const PUT = async (req) => {
   }
 };
 
-export const DELETE = async (req) => {
+export const DELETE = async (req: { url: string | URL; }) => {
   await connect();
 
   try {
