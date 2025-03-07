@@ -121,7 +121,6 @@ export default function UserProfile() {
     if (profileData.profilePhoto instanceof File) {
       formData.append('profilePhoto', profileData.profilePhoto);
     }
-    
 
     try {
       const response = await axios.put('/api/updateProfile', formData, {
@@ -153,7 +152,7 @@ export default function UserProfile() {
   src={
     profileData.profilePhoto instanceof File
       ? URL.createObjectURL(profileData.profilePhoto)
-      : profileData.profilePhoto || '/user.png'
+      : profileData.profilePhoto || '/default-avatar.png'
   }
   alt="Profile"
   width={100} 
