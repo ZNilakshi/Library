@@ -27,7 +27,7 @@ const userSchema = new Schema(
       required: false,
     },
     profilePhoto: {
-      type: String, // URL to the photo
+      type: String, 
       required: false,
     },
     downloads: [
@@ -35,8 +35,7 @@ const userSchema = new Schema(
         bookId: { 
           type: mongoose.Schema.Types.ObjectId, 
           ref: 'Book',
-          // No need to make bookId required at the schema level, handle it in app logic if needed
-        },
+                  },
         downloadedAt: { 
           type: Date, 
           default: Date.now 

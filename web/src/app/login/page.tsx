@@ -1,8 +1,9 @@
 "use client";
 import { useState } from 'react';
-import { useRouter } from 'next/navigation'; // Import useRouter hook
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { signIn } from 'next-auth/react';
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
@@ -10,9 +11,10 @@ const LoginPage = () => {
     password: ''
   });
 
-  const router = useRouter(); // Initialize useRouter
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  const handleChange = (e : React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -21,51 +23,42 @@ const LoginPage = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-  
-      if (response.ok) {
-        const data = await response.json();
-        console.log('User logged in successfully');
-        localStorage.setItem('token', data.token);
-        router.push('/main'); // Redirect to the main page
-      } else {
-        const errorData = await response.json();
-        console.error('Error:', errorData.error);
-      }
-    } catch (error) {
-      console.error('Error:', error);
+    setError(null);
+
+    const result = await signIn("credentials", {
+      redirect: false,
+      email: formData.email,
+      password: formData.password,
+    });
+
+    if (result?.error) {
+      setError(result.error);
+    } else {
+      router.push("/");
     }
   };
-  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat bg-gray-50 py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundImage: 'url(/back.jpg)' }}>
-       <div className="flex max-w-4xl w-full bg-white shadow-md rounded-lg overflow-hidden">
+      <div className="flex max-w-4xl w-full bg-white shadow-md rounded-lg overflow-hidden">
         <div className="hidden lg:flex lg:flex-col lg:justify-center lg:w-1/2 bg-dark-green p-8">
-        <div className="relative w-full h-full">
-        <Image
-            className="absolute inset-0 w-full h-full object-cover"
-            src="/back.jpg"
-            alt="Your Logo"
-            layout="fill"
-            objectFit="cover"
-          />
+          <div className="relative w-full h-full">
+            <Image
+              className="absolute inset-0 w-full h-full object-cover"
+              src="/back.jpg"
+              alt="Your Logo"
+              layout="fill"
+              objectFit="cover"
+            />
           </div>
         </div>
         <div className="flex-1 px-4 py-6 sm:px-8 lg:px-12">
           <div className="max-w-md w-full space-y-8 mx-auto">
-            <div>
-              <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Sign in to your account</h2>
-            </div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Sign in to your account</h2>
+
+            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded relative text-center">{error}</div>}
+
             <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-              <input type="hidden" name="remember" value="true" />
               <div className="rounded-md shadow-sm">
                 <div className="mb-4">
                   <label htmlFor="email-address" className="block text-sm font-medium text-gray-700">E-mail Address</label>
@@ -82,33 +75,24 @@ const LoginPage = () => {
               </div>
 
               <div className="flex items-center justify-between mb-4">
-                <div className="text-sm">
-                  <Link href="/forgot-password" legacyBehavior>
-                    <a className="font-medium text-dark-green hover:text-dark-green">Forgot your password?</a>
-                  </Link>
-                </div>
+                <Link href="/forgot-password" className="font-medium text-dark-green hover:text-dark-green">Forgot your password?</Link>
               </div>
 
-              <div>
-                <button type="submit"
-                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-dark-green hover:bg-dark-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                  Sign In
-                </button>
-              </div>
+              <button type="submit"
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-dark-green hover:bg-dark-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Sign In
+              </button>
 
               <div className="text-center mt-4">
                 <button
-                  onClick={() => router.push('/api/auth/signin/google')}
+                  onClick={() => signIn('google')}
                   className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                  <span className="sr-only">Sign in with Google</span>
                   <i className="fab fa-google text-lg mr-2"></i> Sign in with Google
                 </button>
               </div>
 
               <div className="text-center mt-4">
-                <Link href="/register" legacyBehavior>
-                  <a className="font-medium text-gray-600 hover:text-gray-500">Create an account</a>
-                </Link>
+                <Link href="/register" className="font-medium text-gray-600 hover:text-gray-500">Create an account</Link>
               </div>
             </form>
           </div>

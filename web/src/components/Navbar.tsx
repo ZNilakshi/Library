@@ -75,7 +75,7 @@ const Navbar = () => {
             {session ? (
               <div className="flex items-center space-x-2">
                 <Image
-                  src={session?.user?.image ?? '/default-image.png'}
+                  src={session?.user?.image ?? '/user.png'}
                   alt="User Photo"
                   width={32}
                   height={32}
@@ -160,7 +160,7 @@ const Navbar = () => {
                   onClick={handleProfileClick}
                 >
                   <Image
-                    src={session?.user?.image ?? '/default-image.png'}
+                    src={session?.user?.image ?? '/user.png'}
                     alt="User Photo"
                     width={32}
                     height={32}

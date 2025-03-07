@@ -10,6 +10,8 @@ const RegisterPage = () => {
     email: '',
     password: ''
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const router = useRouter(); // Initialize useRouter
 
@@ -21,28 +23,41 @@ const RegisterPage = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    try {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+  e.preventDefault();
+  setLoading(true);
+  setError('');
 
-      if (response.ok) {
-        console.log('User registered successfully');
-        router.push('/'); // Redirect to the main page
-      } else {
-        const errorData = await response.json();
-        console.error('Error:', errorData.error);
-        // Handle errors (e.g., user already exists)
+  try {
+    const response = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      console.log('User registered successfully');
+
+      // Fetch user session after registration
+      const sessionResponse = await fetch('/api/auth/session');
+      const sessionData = await sessionResponse.json();
+
+      if (sessionData) {
+        router.refresh(); // Force a re-render of the navbar
       }
-    } catch (error) {
-      console.error('Error:', error);
+
+      router.push('/login'); // Redirect to homepage
+    } else {
+      setError(data.error || 'Something went wrong. Please try again.');
     }
-  };
+  } catch (error) {
+    setError('Network error. Please try again later.');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat bg-gray-50 py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundImage: 'url(/back.jpg)' }}>
@@ -58,6 +73,8 @@ const RegisterPage = () => {
             <div>
               <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Create your account</h2>
             </div>
+            {error && <p className="text-red-500 text-center">{error}</p>}
+         
             <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
               <input type="hidden" name="remember" value="true" />
               <div className="rounded-md shadow-sm">
@@ -85,19 +102,16 @@ const RegisterPage = () => {
                 <div className="flex items-center">
                   <input id="terms-and-conditions" name="terms-and-conditions" type="checkbox" required
                     className="h-4 w-4 text-dark-green focus:dark-green border-gray-300 rounded" />
-                  <label htmlFor="terms-and-conditions" className="ml-2 block text-sm text-gray-900">
-                    By Signing up, I agree with{' '}
-                    <Link href="/terms" legacyBehavior>
-                      <a className="font-medium text-dark-green hover:text-dark-green">Terms & Conditions</a>
-                    </Link>
+                  <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
+                    By signing up, I agree to the <Link href="/terms" className="text-dark-green hover:underline">Terms & Conditions</Link>
                   </label>
                 </div>
               </div>
 
               <div>
                 <button type="submit"
-                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-dark-green hover:bg-dark-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                  Sign Up
+                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-dark-green hover:bg-dark-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" disabled={loading}>
+                   {loading ? 'Signing Up...' : 'Sign Up'}
                 </button>
               </div>
               <div className="text-center mt-4">
