@@ -1,39 +1,9 @@
+// pages/api/updateProfile.js
 import { NextRequest, NextResponse } from 'next/server';
-import { NextApiRequest, NextApiResponse } from 'next';
-import multer from 'multer';
-import { promisify } from 'util';
 import connect from '../../../utils/db';
 import User from '../../../models/User';
-import type { IncomingMessage } from 'http';
+import { uploadImage } from '../../../utils/cloudinary';
 
-// Multer setup for file upload
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'public/uploads'); // Save files in 'public/uploads' folder
-  },
-  filename: (req, file, cb) => {
-    const sanitizedFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_').replace(/\s+/g, '_');
-    cb(null, `${Date.now()}-${sanitizedFileName}`);
-  },
-});
-
-const upload = multer({ storage: storage });
-
-// Custom middleware to handle Multer file uploads in Next.js
-const multerMiddleware = upload.single('profilePhoto');
-
-function runMiddleware(req: IncomingMessage & NextApiRequest, res: NextApiResponse, fn: Function) {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result: any) => {
-      if (result instanceof Error) {
-        return reject(result);
-      }
-      return resolve(result);
-    });
-  });
-}
-
-// GET: Fetch user profile data
 export const GET = async (req: NextRequest) => {
   await connect(); // Ensure DB connection
 
@@ -58,18 +28,11 @@ export const GET = async (req: NextRequest) => {
   }
 };
 
-// PUT: Update user profile data
-export const PUT = async (req: NextRequest, res: NextApiResponse) => {
+export const PUT = async (req: NextRequest) => {
   await connect(); // Ensure DB connection
 
   try {
-    // Convert NextRequest to NextApiRequest and run Multer middleware
-    await runMiddleware(req as unknown as IncomingMessage & NextApiRequest, res, multerMiddleware);
-
     const formData = await req.formData();
-    console.log('Form Data:', formData); // Debug log
-    console.log('Uploaded File:', formData.get('profilePhoto')); // Debug log for file
-
     const email = formData.get('email');
 
     if (!email) {
@@ -84,15 +47,22 @@ export const PUT = async (req: NextRequest, res: NextApiResponse) => {
     const name = formData.get('name');
     const country = formData.get('country');
     const favoriteBook = formData.get('favoriteBook');
-    const profilePhoto = formData.has('profilePhoto')
-      ? `/uploads/${(formData.get('profilePhoto') as any).name}`
-      : null;
+    const profilePhotoFile = formData.get('profilePhoto');
+
+    let profilePhotoUrl = user.profilePhoto;
+
+    if (profilePhotoFile instanceof File) {
+      const arrayBuffer = await profilePhotoFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const base64Image = buffer.toString('base64');
+      profilePhotoUrl = await uploadImage(`data:${profilePhotoFile.type};base64,${base64Image}`);
+    }
 
     // Update user data
     user.name = name || user.name;
     user.country = country || user.country;
     user.favoriteBook = favoriteBook || user.favoriteBook;
-    user.profilePhoto = profilePhoto;
+    user.profilePhoto = profilePhotoUrl;
 
     await user.save();
 
