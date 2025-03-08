@@ -35,7 +35,7 @@ export default function Home() {
             Explore a vast collection of books from various genres. Whether you
             are looking for the latest bestsellers or classic literature, our
             e-library has something for everyone. Sign up now to start borrowing
-            or browsing our catalog.
+            or browsing our catalog...
           </p>
           <Link href="/categories">
             <button
