@@ -1,28 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import multer from 'multer';
-import { promisify } from 'util';
+import { NextResponse } from 'next/server';
 import connect from '../../../utils/db';
 import Book from '../../../models/Book';
-import { Request, ParamsDictionary } from 'express-serve-static-core';
-import { ParsedQs } from 'qs';
+import { cloudinary, uploadFile } from '../../../utils/cloudinary'; // Import the cloudinary instance and uploadFile function
 
-// Set up multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'public/uploads');
-  },
-  filename: (req, file, cb) => {
-    const sanitizedFileName = file.originalname
-      .replace(/[^a-zA-Z0-9.-]/g, '_')
-      .replace(/\s+/g, '_');
-    cb(null, `${Date.now()}-${sanitizedFileName}`);
-  },
-});
-
-const upload = multer({ storage: storage });
-const uploadMiddleware = promisify(upload.fields([{ name: 'coverImage' }, { name: 'pdf' }]));
-
-export const GET = async (req: { url: string | URL; }) => {
+export const GET = async (req) => {
   await connect();
   const { searchParams } = new URL(req.url);
   const adminEmail = searchParams.get('adminEmail');
@@ -31,7 +12,6 @@ export const GET = async (req: { url: string | URL; }) => {
   let filter = {};
   if (adminEmail) filter.adminEmail = adminEmail;
   if (category) {
-    // Use case-insensitive regex search for category
     filter.category = { $regex: new RegExp(category, 'i') };
   }
 
@@ -44,12 +24,17 @@ export const GET = async (req: { url: string | URL; }) => {
   }
 };
 
-export const POST = async (req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>) => {
+export const POST = async (req) => {
   await connect();
-  try {
-    await uploadMiddleware(req, null);
 
+  try {
     const formData = await req.formData();
+
+    // Log form data for debugging
+    for (const [key, value] of formData.entries()) {
+      console.log(`${key}: ${value}`);
+    }
+
     const title = formData.get('title');
     const author = formData.get('author');
     const description = formData.get('description');
@@ -57,65 +42,143 @@ export const POST = async (req: Request<ParamsDictionary, any, any, ParsedQs, Re
     const adminEmail = formData.get('adminEmail');
 
     if (!title || !author || !description || !category || !adminEmail) {
-      return NextResponse.json({ error: 'All book fields are required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'All book fields are required' },
+        { status: 400 }
+      );
     }
 
-    category = category.toLowerCase(); // Save category as lowercase
+    category = category.toLowerCase();
 
-    const coverImage = formData.has('coverImage') ? `/uploads/${formData.get('coverImage').name}` : null;
-    const pdf = formData.has('pdf') ? `/uploads/${formData.get('pdf').name}` : null;
+    const coverImageFile = formData.get('coverImage');
+    const pdfFile = formData.get('pdf');
 
+    let coverImageUrl = null;
+    let pdfUrl = null;
+
+    // Upload cover image to Cloudinary
+    if (coverImageFile) {
+      try {
+        coverImageUrl = await uploadFile(coverImageFile, 'book_covers');
+      } catch (error) {
+        console.error('Error uploading cover image:', error);
+        return NextResponse.json(
+          { error: 'Failed to upload cover image' },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Upload PDF to Cloudinary
+    if (pdfFile) {
+      try {
+        pdfUrl = await uploadFile(pdfFile, 'book_pdfs', 'raw');
+      } catch (error) {
+        console.error('Error uploading PDF:', error);
+        return NextResponse.json(
+          { error: 'Failed to upload PDF' },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Save book to database
     const newBook = new Book({
       title,
       author,
       description,
       category,
-      coverImageUrl: coverImage,
-      pdfUrl: pdf,
+      coverImageUrl,
+      pdfUrl,
       adminEmail,
     });
 
     await newBook.save();
 
-    return NextResponse.json({ message: 'Book added successfully', book: newBook }, { status: 201 });
+    return NextResponse.json(
+      { message: 'Book added successfully', book: newBook },
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Error adding book:', error);
-    return NextResponse.json({ error: 'Failed to add book' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to add book' },
+      { status: 500 }
+    );
   }
 };
-
-export const PUT = async (req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>) => {
+export const PUT = async (req: NextRequest, { params }: { params: { id: string } }) => {
   await connect();
 
   try {
-    await uploadMiddleware(req, null);
+    console.log('Received request to update book:', params.id);
 
     const formData = await req.formData();
-    const { searchParams } = new URL(req.url);
-    const bookId = searchParams.get('id');
-
-    if (!bookId) {
-      return NextResponse.json({ error: 'Book ID is required' }, { status: 400 });
-    }
-
-    let category = formData.get('category');
-    if (category) category = category.toLowerCase(); // Convert to lowercase
-
-    const updatedData = {
+    console.log('Form Data:', {
       title: formData.get('title'),
       author: formData.get('author'),
       description: formData.get('description'),
-      category,
-      coverImageUrl: formData.has('coverImage') ? `/uploads/${formData.get('coverImage').name}` : undefined,
-      pdfUrl: formData.has('pdf') ? `/uploads/${formData.get('pdf').name}` : undefined,
+      category: formData.get('category'),
+      coverImage: formData.get('coverImage') ? 'File present' : 'No file',
+      pdf: formData.get('pdf') ? 'File present' : 'No file',
+    });
+
+    const title = formData.get('title') as string;
+    const author = formData.get('author') as string;
+    const description = formData.get('description') as string;
+    const category = formData.get('category') as string;
+
+    if (!title || !author || !description || !category) {
+      console.error('Missing required fields');
+      return NextResponse.json({ error: 'All book fields are required' }, { status: 400 });
+    }
+
+    const updatedData: any = {
+      title,
+      author,
+      description,
+      category: category.toLowerCase(),
     };
 
-    const updatedBook = await Book.findByIdAndUpdate(bookId, updatedData, { new: true });
+    const coverImageFile = formData.get('coverImage');
+    const pdfFile = formData.get('pdf');
+
+    if (coverImageFile) {
+      console.log('Uploading cover image...');
+      const coverImageBuffer = await coverImageFile.arrayBuffer();
+      const coverImageUpload = await cloudinary.uploader.upload(
+        `data:${coverImageFile.type};base64,${Buffer.from(coverImageBuffer).toString('base64')}`,
+        {
+          folder: 'book_covers',
+        }
+      );
+      updatedData.coverImageUrl = coverImageUpload.secure_url;
+      console.log('Cover image uploaded:', updatedData.coverImageUrl);
+    }
+
+    if (pdfFile) {
+      console.log('Uploading PDF...');
+      const pdfBuffer = await pdfFile.arrayBuffer();
+      const pdfUpload = await cloudinary.uploader.upload(
+        `data:${pdfFile.type};base64,${Buffer.from(pdfBuffer).toString('base64')}`,
+        {
+          folder: 'book_pdfs',
+          resource_type: 'raw',
+        }
+      );
+      updatedData.pdfUrl = pdfUpload.secure_url;
+      console.log('PDF uploaded:', updatedData.pdfUrl);
+    }
+
+    console.log('Updating book in database...');
+    const updatedBook = await Book.findByIdAndUpdate(params.id, updatedData, { new: true });
 
     if (!updatedBook) {
+      console.error('Book not found');
       return NextResponse.json({ error: 'Book not found' }, { status: 404 });
     }
 
+    console.log('Book updated successfully:', updatedBook);
     return NextResponse.json({ message: 'Book updated successfully', book: updatedBook }, { status: 200 });
   } catch (error) {
     console.error('Error updating book:', error);
@@ -123,9 +186,8 @@ export const PUT = async (req: Request<ParamsDictionary, any, any, ParsedQs, Rec
   }
 };
 
-export const DELETE = async (req: { url: string | URL; }) => {
+export const DELETE = async (req) => {
   await connect();
-
   try {
     const { searchParams } = new URL(req.url);
     const bookId = searchParams.get('id');
@@ -145,4 +207,4 @@ export const DELETE = async (req: { url: string | URL; }) => {
     console.error('Error deleting book:', error);
     return NextResponse.json({ error: 'Failed to delete book' }, { status: 500 });
   }
-};
+}; 

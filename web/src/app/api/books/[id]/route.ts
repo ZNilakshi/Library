@@ -1,30 +1,8 @@
-import { NextResponse, NextRequest } from 'next/server'; // Use NextRequest for req typing
-import multer from 'multer';
-import { promisify } from 'util';
-import fs from 'fs';
-import path from 'path';
+import { NextResponse } from 'next/server';
 import connect from '../../../../utils/db';
 import Book from '../../../../models/Book';
+import { cloudinary } from '../../../../utils/cloudinary'; // Import the cloudinary instance
 
-// Set up Multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = 'public/uploads';
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const sanitizedFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_').replace(/\s+/g, '_');
-    cb(null, `${Date.now()}-${sanitizedFileName}`);
-  },
-});
-
-const upload = multer({ storage });
-const uploadMiddleware = promisify(upload.fields([{ name: 'coverImage' }, { name: 'pdf' }]));
-
-// GET: Fetch a single book by ID
 export const GET = async (req: NextRequest, { params }: { params: { id: string } }) => {
   await connect();
   const { id } = params;
@@ -40,15 +18,20 @@ export const GET = async (req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Book not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ book }, { status: 200 });
+    // Ensure the PDF URL is correct
+    if (book.pdfUrl) {
+      return NextResponse.json({ book }, { status: 200 });
+    } else {
+      return NextResponse.json({ error: 'PDF not found' }, { status: 404 });
+    }
   } catch (error) {
     console.error('Error fetching book:', error);
     return NextResponse.json({ error: 'Failed to fetch book' }, { status: 500 });
   }
 };
-
-// PUT: Update book by ID
 export const PUT = async (req: NextRequest, { params }: { params: { id: string } }) => {
+  await connect();
+
   try {
     const formData = await req.formData();
 
@@ -65,21 +48,35 @@ export const PUT = async (req: NextRequest, { params }: { params: { id: string }
       title,
       author,
       description,
-      category,
+      category: category.toLowerCase(),
     };
 
-    if (formData.has('coverImage')) {
-      const coverImage = formData.get('coverImage');
-      if (coverImage instanceof File) {
-        updatedData.coverImageUrl = `/uploads/${coverImage.name}`;
-      }
+    const coverImageFile = formData.get('coverImage');
+    const pdfFile = formData.get('pdf');
+
+    // Upload new cover image if provided
+    if (coverImageFile) {
+      const coverImageBuffer = await coverImageFile.arrayBuffer();
+      const coverImageUpload = await cloudinary.uploader.upload(
+        `data:${coverImageFile.type};base64,${Buffer.from(coverImageBuffer).toString('base64')}`,
+        {
+          folder: 'book_covers',
+        }
+      );
+      updatedData.coverImageUrl = coverImageUpload.secure_url;
     }
 
-    if (formData.has('pdf')) {
-      const pdf = formData.get('pdf');
-      if (pdf instanceof File) {
-        updatedData.pdfUrl = `/uploads/${pdf.name}`;
-      }
+    // Upload new PDF if provided
+    if (pdfFile) {
+      const pdfBuffer = await pdfFile.arrayBuffer();
+      const pdfUpload = await cloudinary.uploader.upload(
+        `data:${pdfFile.type};base64,${Buffer.from(pdfBuffer).toString('base64')}`,
+        {
+          folder: 'book_pdfs',
+          resource_type: 'raw',
+        }
+      );
+      updatedData.pdfUrl = pdfUpload.secure_url;
     }
 
     // Update the book in the database
@@ -96,7 +93,6 @@ export const PUT = async (req: NextRequest, { params }: { params: { id: string }
   }
 };
 
-// DELETE: Delete book by ID
 export const DELETE = async (req: NextRequest, { params }: { params: { id: string } }) => {
   await connect();
 
@@ -108,9 +104,7 @@ export const DELETE = async (req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Book ID is required' }, { status: 400 });
     }
 
-    // Log the bookId to ensure it is correct
-    console.log(`Deleting book with ID: ${bookId}`);
-
+    // Find the book to get the Cloudinary public IDs
     const book = await Book.findById(bookId);
 
     if (!book) {
@@ -118,18 +112,26 @@ export const DELETE = async (req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Book not found' }, { status: 404 });
     }
 
-    // Optionally delete associated files (coverImage and PDF)
+    // Delete associated files from Cloudinary
     if (book.coverImageUrl) {
-      const coverImagePath = path.join(process.cwd(), 'public', book.coverImageUrl);
-      if (fs.existsSync(coverImagePath)) {
-        fs.unlinkSync(coverImagePath);
+      try {
+        const publicId = book.coverImageUrl.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(`book_covers/${publicId}`);
+        console.log(`Deleted cover image from Cloudinary: ${publicId}`);
+      } catch (error) {
+        console.error('Error deleting cover image from Cloudinary:', error);
+        // Continue even if Cloudinary deletion fails
       }
     }
 
     if (book.pdfUrl) {
-      const pdfPath = path.join(process.cwd(), 'public', book.pdfUrl);
-      if (fs.existsSync(pdfPath)) {
-        fs.unlinkSync(pdfPath);
+      try {
+        const publicId = book.pdfUrl.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(`book_pdfs/${publicId}`, { resource_type: 'raw' });
+        console.log(`Deleted PDF from Cloudinary: ${publicId}`);
+      } catch (error) {
+        console.error('Error deleting PDF from Cloudinary:', error);
+        // Continue even if Cloudinary deletion fails
       }
     }
 

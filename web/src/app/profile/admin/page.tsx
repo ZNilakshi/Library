@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useSession } from 'next-auth/react';
@@ -125,7 +124,7 @@ export default function AdminProfile() {
     setBookLoading(true);
     setBookError('');
     setBookSuccess('');
-
+  
     const formData = new FormData();
     formData.append('title', newBook.title);
     formData.append('author', newBook.author);
@@ -138,7 +137,7 @@ export default function AdminProfile() {
       formData.append('pdf', newBook.pdf);
     }
     formData.append('adminEmail', session.user.email);
-
+  
     try {
       const response = await axios.post('/api/books', formData, {
         headers: {
@@ -160,7 +159,6 @@ export default function AdminProfile() {
       setBookError('Failed to add book. Please try again.');
     } finally {
       setBookLoading(false);
-      // Clear success message after a delay
       setTimeout(() => setBookSuccess(''), 3000);
     }
   };
@@ -183,19 +181,20 @@ export default function AdminProfile() {
     setBookLoading(true);
     setBookError('');
     setBookSuccess('');
-
+  
     const formData = new FormData();
     formData.append('title', newBook.title);
     formData.append('author', newBook.author);
     formData.append('description', newBook.description);
     formData.append('category', newBook.category);
+  
     if (newBook.coverImage) {
       formData.append('coverImage', newBook.coverImage);
     }
     if (newBook.pdf) {
       formData.append('pdf', newBook.pdf);
     }
-
+  
     try {
       const response = await axios.put(`/api/books/${editBookId}`, formData, {
         headers: {
@@ -536,4 +535,3 @@ export default function AdminProfile() {
     </div>
   );
 }
-

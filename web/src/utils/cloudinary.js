@@ -6,6 +6,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
   secure: true,
 });
+export { cloudinary }; // Export the cloudinary instance
 
 export const uploadImage = async (file) => {
   try {
@@ -18,3 +19,25 @@ export const uploadImage = async (file) => {
     throw error;
   }
 };
+
+export const uploadFile = async (file, folder, resourceType = 'image') => {
+  try {
+    // Convert the file to a base64 string
+    const fileBuffer = await file.arrayBuffer();
+    const base64File = Buffer.from(fileBuffer).toString('base64');
+
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(
+      `data:${file.type};base64,${base64File}`,
+      {
+        folder,
+        resource_type: resourceType,
+      }
+    );
+
+    return result.secure_url; // Return the secure URL of the uploaded file
+  } catch (error) {
+    console.error('Error uploading file to Cloudinary:', error);
+    throw error;
+  }
+};           
