@@ -1,8 +1,9 @@
 "use client";
 
 import { useSession } from 'next-auth/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, SetStateAction } from 'react';
 import axios from 'axios';
+import Image from 'next/image';
 
 export default function AdminProfile() {
   const { data: session } = useSession();
@@ -12,7 +13,7 @@ export default function AdminProfile() {
     name: '',
     email: '',
     country: '',
-    profilePhoto: '',
+    profilePhoto: null as any,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,7 +21,7 @@ export default function AdminProfile() {
   const [bookings, setBookings] = useState([]);
   
   // States for Books Management
-  const [books, setBooks] = useState([]);
+  const [books, setBooks] = useState<any[]>([]);
   const [editBookId, setEditBookId] = useState(null);
   const [newBook, setNewBook] = useState({
     title: '',
@@ -66,17 +67,17 @@ export default function AdminProfile() {
     return <p>Loading...</p>;
   }
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: { target: { name: any; value: any; }; }) => {
     const { name, value } = e.target;
     setProfileData({ ...profileData, [name]: value });
   };
 
-  const handlePhotoChange = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setProfileData({ ...profileData, profilePhoto: file });
-    }
-  };
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (files && files[0]) {
+        setProfileData({ ...profileData, profilePhoto: files[0] });
+      }
+    };
 
   const handleSave = async () => {
     setLoading(true);
@@ -110,16 +111,19 @@ export default function AdminProfile() {
   };
 
   // Handlers for Books Management
-  const handleBookChange = (e) => {
-    const { name, value, files } = e.target;
+  const handleBookChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    const files = (e.target as HTMLInputElement).files;
     if (name === 'coverImage' || name === 'pdf') {
-      setNewBook({ ...newBook, [name]: files[0] });
+      if (files) {
+        setNewBook({ ...newBook, [name]: files[0] });
+      }
     } else {
       setNewBook({ ...newBook, [name]: value });
     }
   };
 
-  const handleAddBook = async (e) => {
+  const handleAddBook = async (e: { preventDefault: () => void; }) => {
     e.preventDefault();
     setBookLoading(true);
     setBookError('');
@@ -163,7 +167,7 @@ export default function AdminProfile() {
     }
   };
 
-  const handleEditBook = (bookId) => {
+  const handleEditBook = (bookId: SetStateAction<null>) => {
     const bookToEdit = books.find((book) => book._id === bookId);
     setNewBook({
       title: bookToEdit.title,
@@ -176,7 +180,7 @@ export default function AdminProfile() {
     setEditBookId(bookId);
   };
 
-  const handleUpdateBook = async (e) => {
+  const handleUpdateBook = async (e: { preventDefault: () => void; }) => {
     e.preventDefault();
     setBookLoading(true);
     setBookError('');
@@ -224,7 +228,7 @@ export default function AdminProfile() {
     }
   };
 
-  const handleDeleteBook = async (bookId) => {
+  const handleDeleteBook = async (bookId: any) => {
     try {
       await axios.delete(`/api/books/${bookId}`);
       setBooks(books.filter((book) => book._id !== bookId));
@@ -239,14 +243,16 @@ export default function AdminProfile() {
     switch (selectedTab) {
       case 'profile':
         return (
-          <div className="text-center bg-white p-6 rounded-lg shadow-lg shadow-lg max-w-md mx-auto">
-            <img
+          <div className="text-center bg-white p-6 rounded-lg shadow-lg  max-w-md mx-auto">
+            <Image
               src={
                 profileData.profilePhoto instanceof File
                   ? URL.createObjectURL(profileData.profilePhoto)
                   : profileData.profilePhoto || '/default-avatar.png'
               }
               alt="Profile"
+              width={96}
+              height={96}
               className="h-24 w-24  rounded-full mx-auto border-4 border-gray-200 mb-4"
             />
             {isEditing ? (
@@ -304,7 +310,7 @@ export default function AdminProfile() {
         return (
           <div>
          <div className="flex justify-center items-center min-h-screen">
-  <div className="mt-3 w-full bg-white p-6 shadow-lg max-w-md mx-auto max-w-lg ">
+  <div className="mt-3 w-full bg-white p-6 shadow-lg mx-auto max-w-lg ">
     <h2 className="text-xl font-semibold mb-4">Add New Book</h2>
     <form onSubmit={handleAddBook}>
       <input
@@ -454,9 +460,11 @@ export default function AdminProfile() {
                     </form>
                   ) : (
                     <>
-                      <img
+                      <Image
                         src={book.coverImageUrl}
                         alt="Cover"
+                        width={192}
+                        height={192}
                         className="h-48 w-full object-cover"
                       />
                       <div className="p-4">

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 export default function Categories() {
-  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const categories = [
     { name: "Fiction", image: "/fiction.png", description: "Explore imaginative storytelling in Fiction books.", link: "/categories/Fiction" },

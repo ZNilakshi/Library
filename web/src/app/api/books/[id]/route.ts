@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse ,  NextRequest  } from 'next/server';
 import connect from '../../../../utils/db';
 import Book from '../../../../models/Book';
 import { cloudinary } from '../../../../utils/cloudinary'; // Import the cloudinary instance
@@ -54,8 +54,8 @@ export const PUT = async (req: NextRequest, { params }: { params: { id: string }
     const coverImageFile = formData.get('coverImage');
     const pdfFile = formData.get('pdf');
 
-    // Upload new cover image if provided
-    if (coverImageFile) {
+     // Upload new cover image if provided
+     if (coverImageFile instanceof File) {
       const coverImageBuffer = await coverImageFile.arrayBuffer();
       const coverImageUpload = await cloudinary.uploader.upload(
         `data:${coverImageFile.type};base64,${Buffer.from(coverImageBuffer).toString('base64')}`,
@@ -65,9 +65,8 @@ export const PUT = async (req: NextRequest, { params }: { params: { id: string }
       );
       updatedData.coverImageUrl = coverImageUpload.secure_url;
     }
-
-    // Upload new PDF if provided
-    if (pdfFile) {
+     // Upload new PDF if provided
+     if (pdfFile instanceof File) {
       const pdfBuffer = await pdfFile.arrayBuffer();
       const pdfUpload = await cloudinary.uploader.upload(
         `data:${pdfFile.type};base64,${Buffer.from(pdfBuffer).toString('base64')}`,
@@ -78,7 +77,6 @@ export const PUT = async (req: NextRequest, { params }: { params: { id: string }
       );
       updatedData.pdfUrl = pdfUpload.secure_url;
     }
-
     // Update the book in the database
     const updatedBook = await Book.findByIdAndUpdate(params.id, updatedData, { new: true });
 

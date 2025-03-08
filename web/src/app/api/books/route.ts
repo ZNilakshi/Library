@@ -1,15 +1,15 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import connect from '../../../utils/db';
 import Book from '../../../models/Book';
 import { cloudinary, uploadFile } from '../../../utils/cloudinary'; // Import the cloudinary instance and uploadFile function
 
-export const GET = async (req) => {
+export const GET = async (req: NextRequest) => {
   await connect();
   const { searchParams } = new URL(req.url);
   const adminEmail = searchParams.get('adminEmail');
   const category = searchParams.get('category');
 
-  let filter = {};
+  let filter: { adminEmail?: string; category?: { $regex: RegExp } } = {};
   if (adminEmail) filter.adminEmail = adminEmail;
   if (category) {
     filter.category = { $regex: new RegExp(category, 'i') };
@@ -24,7 +24,7 @@ export const GET = async (req) => {
   }
 };
 
-export const POST = async (req) => {
+export const POST = async (req: NextRequest) => {
   await connect();
 
   try {
@@ -48,8 +48,10 @@ export const POST = async (req) => {
       );
     }
 
-    category = category.toLowerCase();
-
+    if (typeof category === 'string') {
+      category = category.toLowerCase();
+    }
+    
     const coverImageFile = formData.get('coverImage');
     const pdfFile = formData.get('pdf');
 
@@ -145,9 +147,9 @@ export const PUT = async (req: NextRequest, { params }: { params: { id: string }
 
     if (coverImageFile) {
       console.log('Uploading cover image...');
-      const coverImageBuffer = await coverImageFile.arrayBuffer();
+      const coverImageBuffer = await (coverImageFile as File).arrayBuffer();
       const coverImageUpload = await cloudinary.uploader.upload(
-        `data:${coverImageFile.type};base64,${Buffer.from(coverImageBuffer).toString('base64')}`,
+        `data:${(coverImageFile as File).type};base64,${Buffer.from(coverImageBuffer).toString('base64')}`,
         {
           folder: 'book_covers',
         }
@@ -158,9 +160,9 @@ export const PUT = async (req: NextRequest, { params }: { params: { id: string }
 
     if (pdfFile) {
       console.log('Uploading PDF...');
-      const pdfBuffer = await pdfFile.arrayBuffer();
+      const pdfBuffer = await (pdfFile as File).arrayBuffer();
       const pdfUpload = await cloudinary.uploader.upload(
-        `data:${pdfFile.type};base64,${Buffer.from(pdfBuffer).toString('base64')}`,
+        `data:${(pdfFile as File).type};base64,${Buffer.from(pdfBuffer).toString('base64')}`,
         {
           folder: 'book_pdfs',
           resource_type: 'raw',
@@ -186,7 +188,7 @@ export const PUT = async (req: NextRequest, { params }: { params: { id: string }
   }
 };
 
-export const DELETE = async (req) => {
+export const DELETE = async (req: NextRequest) => {
   await connect();
   try {
     const { searchParams } = new URL(req.url);
