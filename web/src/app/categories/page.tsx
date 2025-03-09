@@ -39,7 +39,7 @@ export default function Categories() {
 
       {/* Heading */}
       <h1 className="text-4xl font-bold mb-10 text-white text-center relative z-10">
-        Book Categories
+        BOOK CATEGORIES
       </h1>
 
       {/* Categories Grid */}

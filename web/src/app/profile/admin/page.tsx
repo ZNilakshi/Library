@@ -248,7 +248,7 @@ export default function AdminProfile() {
               src={
                 profileData.profilePhoto instanceof File
                   ? URL.createObjectURL(profileData.profilePhoto)
-                  : profileData.profilePhoto || '/default-avatar.png'
+                  : profileData.profilePhoto || '/user.png'
               }
               alt="Profile"
               width={96}
@@ -311,41 +311,63 @@ export default function AdminProfile() {
           <div>
          <div className="flex justify-center items-center min-h-screen">
   <div className="mt-3 w-full bg-white p-6 shadow-lg mx-auto max-w-lg ">
-    <h2 className="text-xl font-semibold mb-4">Add New Book</h2>
-    <form onSubmit={handleAddBook}>
+
+    <div className="max-w-lg mx-auto bg-white shadow-lg rounded-lg p-6">
+  <h2 className="text-2xl font-semibold text-center mb-4 text-gray-700">Add a New Book</h2>
+  
+  <form onSubmit={handleAddBook} className="space-y-4">
+    {/* Book Title */}
+    <div>
+      <label className="block text-gray-600 font-medium">Book Title</label>
       <input
         type="text"
         name="title"
         value={newBook.title}
         onChange={handleBookChange}
-        placeholder="Book Title"
-        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+        placeholder="Enter book title"
+        className="border border-gray-300 rounded-lg p-2 w-full mt-0 focus:ring "
         required
       />
+    </div>
+
+    {/* Author */}
+    <div>
+      <label className="block text-gray-600 font-medium">Author</label>
       <input
         type="text"
         name="author"
         value={newBook.author}
         onChange={handleBookChange}
-        placeholder="Author"
-        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+        placeholder="Enter author name"
+        className="border border-gray-300 rounded-lg p-2 w-full mt-0 focus:ring "
         required
       />
+    </div>
+
+    {/* Description */}
+    <div>
+      <label className="block text-gray-600 font-medium">Description</label>
       <textarea
         name="description"
         value={newBook.description}
         onChange={handleBookChange}
-        placeholder="Description"
-        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+        placeholder="Write a short description"
+        className="border border-gray-300 rounded-lg p-2 w-full mt-0 focus:ring "
         required
       />
+    </div>
+
+    {/* Category */}
+    <div>
+      <label className="block text-gray-600 font-medium">Category</label>
       <select
         name="category"
         value={newBook.category}
         onChange={handleBookChange}
-        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+        className="border border-gray-300 rounded-lg p-2 w-full mt-0 focus:ring "
         required
       >
+        <option value="" disabled>Select category</option>
         <option value="fiction">Fiction</option>
         <option value="non-fiction">Non-fiction</option>
         <option value="science">Science</option>
@@ -357,30 +379,47 @@ export default function AdminProfile() {
         <option value="horror">Horror</option>
         <option value="other">Other</option>
       </select>
+    </div>
+
+    {/* Cover Image Upload */}
+    <div>
+      <label className="block text-gray-600 font-medium">Cover Image</label>
       <input
         type="file"
         name="coverImage"
         accept="image/*"
         onChange={handleBookChange}
-        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+        className="border border-gray-300 rounded-lg p-2 w-full mt-0 cursor-pointer focus:ring "
       />
+    </div>
+
+    {/* PDF Upload */}
+    <div>
+      <label className="block text-gray-600 font-medium">Upload PDF</label>
       <input
         type="file"
         name="pdf"
         accept="application/pdf"
         onChange={handleBookChange}
-        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
+        className="border border-gray-300 rounded-lg p-2 w-full mt-0 cursor-pointer focus:ring "
       />
-      <button
-        type="submit"
-        className="bg-dark-green text-white px-6 py-2 rounded-lg mt-4 w-full"
-        disabled={bookLoading}
-      >
-        {bookLoading ? 'Adding...' : 'Add Book'}
-      </button>
-      {bookError && <p className="text-red-500 mt-2">{bookError}</p>}
-      {bookSuccess && <p className="text-green-500 mt-2">{bookSuccess}</p>}
-    </form>
+    </div>
+
+    {/* Submit Button */}
+    <button
+      type="submit"
+      className="w-full bg-dark-green text-white font-semibold py-2 rounded-lg mt-4 hover:bg-green-700 transition duration-200"
+      disabled={bookLoading}
+    >
+      {bookLoading ? 'Adding...' : 'Add Book'}
+    </button>
+
+    {/* Error & Success Messages */}
+    {bookError && <p className="text-red-500 mt-2 text-center">{bookError}</p>}
+    {bookSuccess && <p className="text-green-500 mt-2 text-center">{bookSuccess}</p>}
+  </form>
+</div>
+
   </div>
 </div>
 
@@ -389,75 +428,88 @@ export default function AdminProfile() {
             {bookSuccess && <p className="text-green-500 mb-4">{bookSuccess}</p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {books.map((book) => (
-                <div key={book._id} className="bg-white  border rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                <div key={book._id} className="bg-white p-4 border rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
                   {editBookId === book._id ? (
                     <form onSubmit={handleUpdateBook}>
-                      <input
-                        type="text"
-                        name="title"
-                        value={newBook.title}
-                        onChange={handleBookChange}
-                        placeholder="Book Title"
-                        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
-                        required
-                      />
-                      <input
-                        type="text"
-                        name="author"
-                        value={newBook.author}
-                        onChange={handleBookChange}
-                        placeholder="Author"
-                        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
-                        required
-                      />
-                      <textarea
-                        name="description"
-                        value={newBook.description}
-                        onChange={handleBookChange}
-                        placeholder="Description"
-                        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
-                        required
-                      />
-                      <select
-                        name="category"
-                        value={newBook.category}
-                        onChange={handleBookChange}
-                        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
-                        required
-                      >
-                        <option value="fiction">Fiction</option>
-                        <option value="non-fiction">Non-fiction</option>
-                        <option value="science">Science</option>
-                        <option value="history">History</option>
-                        <option value="biography">Biography</option>
-                        <option value="fantasy">Fantasy</option>
-                        <option value="mystery">Mystery</option>
-                        <option value="romance">Romance</option>
-                        <option value="horror">Horror</option>
-                        <option value="other">Other</option>
-                      </select>
-                      <input
-                        type="file"
-                        name="coverImage"
-                        accept="image/*"
-                        onChange={handleBookChange}
-                        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
-                      />
-                      <input
-                        type="file"
-                        name="pdf"
-                        accept="application/pdf"
-                        onChange={handleBookChange}
-                        className="border border-gray-300 rounded-lg p-2 w-full mt-2"
-                      />
-                      <button
-                        type="submit"
-                        className="bg-dark-green text-white px-6 py-2 rounded-lg mt-4"
-                        disabled={bookLoading}
-                      >
-                        {bookLoading ? 'Saving...' : 'Save'}
-                      </button>
-                    </form>
+                    <label className="font-semibold">Book Title</label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={newBook.title}
+                      onChange={handleBookChange}
+                      placeholder="Book Title"
+                      className="border border-gray-300 rounded-lg p-2 w-full mt-0"
+                      required
+                    />
+                  
+                    <label className="font-semibold">Author</label>
+                    <input
+                      type="text"
+                      name="author"
+                      value={newBook.author}
+                      onChange={handleBookChange}
+                      placeholder="Author"
+                      className="border border-gray-300 rounded-lg p-2 w-full mt-0"
+                      required
+                    />
+                  
+                    <label className="font-semibold">Description</label>
+                    <textarea
+                      name="description"
+                      value={newBook.description}
+                      onChange={handleBookChange}
+                      placeholder="Description"
+                      className="border border-gray-300 rounded-lg p-2 w-full mt-0"
+                      required
+                    />
+                  
+                    <label className="font-semibold">Category</label>
+                    <select
+                      name="category"
+                      value={newBook.category}
+                      onChange={handleBookChange}
+                      className="border border-gray-300 rounded-lg p-2 w-full mt-0"
+                      required
+                    >
+                      <option value="fiction">Fiction</option>
+                      <option value="non-fiction">Non-fiction</option>
+                      <option value="science">Science</option>
+                      <option value="history">History</option>
+                      <option value="biography">Biography</option>
+                      <option value="fantasy">Fantasy</option>
+                      <option value="mystery">Mystery</option>
+                      <option value="romance">Romance</option>
+                      <option value="horror">Horror</option>
+                      <option value="other">Other</option>
+                    </select>
+                  
+                    <label className="font-semibold">Cover Image</label>
+                    <input
+                      type="file"
+                      name="coverImage"
+                      accept="image/*"
+                      onChange={handleBookChange}
+                      className="border border-gray-300 rounded-lg p-2 w-full mt-0"
+                    />
+                  
+                    <label className="font-semibold">Upload PDF</label>
+                    <input
+                      type="file"
+                      name="pdf"
+                      accept="application/pdf"
+                      onChange={handleBookChange}
+                      className="border border-gray-300 rounded-lg p-2 w-full mt-0"
+                    />
+                  
+                    <button
+                      type="submit"
+                      className="bg-dark-green text-white px-6 py-2 rounded-lg mt-4"
+                      disabled={bookLoading}
+                    >
+                      {bookLoading ? 'Saving...' : 'Save'}
+                    </button>
+                  </form>
+                  
                   ) : (
                     <>
                       <Image

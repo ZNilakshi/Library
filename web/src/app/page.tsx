@@ -4,59 +4,46 @@ import Image from "next/image";
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24 bg-gray-100 relative overflow-hidden">
-      {/* Background Image */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-
-          backgroundImage: 'url(/back.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backdropFilter: 'blur(10px)', // Add blur effect directly
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          }}
-        />
+    <main className="relative flex flex-col items-center justify-center min-h-screen px-6 py-16 bg-gray-100 overflow-hidden">
+      {/* Background Image with Overlay */}
+      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url(/back.jpg)" }}>
+        <div className="absolute inset-0 bg-black/50" />
       </div>
 
-      {/* Left Section */}
-      <div className="flex w-full relative">
-        <div className="w-1/2 flex flex-col justify-center items-start p-8">
-          <p className="text-sm text-black mb-2">E-LIBRARY</p>
-          <h1 className="text-5xl text-white font-bold mb-6">Discover Your Next Read</h1>
-          <p className="text-lg mb-6  text-white">
+      {/* Main Content */}
+      <div className="relative w-full max-w-7xl flex flex-col-reverse lg:flex-row items-center gap-10">
+        
+        {/* Left Section (Text) */}
+        <div className="w-full lg:w-1/2 text-center lg:text-left px-6">
+          <p className="text-sm text-gray-300">E-LIBRARY</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight mt-2">
+            Discover Your Next Read
+          </h1>
+          <p className="text-lg text-gray-300 mt-4">
             Explore a vast collection of books from various genres. Whether you
             are looking for the latest bestsellers or classic literature, our
-            e-library has something for everyone. Sign up now to start borrowing
-            or browsing our catalog...
+            e-library has something for everyone. Sign up now to start browsing
+            our catalog...
           </p>
-          <Link href="/categories">
-            <button
-              className="bg-white text-dark-green px-6 py-3 border border-dark-green font-semibold hover:bg-dark-green hover:text-white transition-colors duration-300"
-            >
-              GET STARTED
-            </button>
-          </Link>
+          <div className="mt-6">
+            <Link href="/categories">
+              <button className="bg-white text-dark-green px-6 py-3 border border-dark-green font-semibold hover:bg-dark-green hover:text-white transition">
+                GET STARTED
+              </button>
+            </Link>
+          </div>
         </div>
 
-        {/* Right Section */}
-        <div className="w-1/2 p-8">
-          <div className="grid grid-cols-1 gap-4">
-            <Image
-              src="/home.png"
-              alt="Featured Book"
-              className="object-cover w-full h-full rounded-lg"
-              width={500}
-              height={300}
-            />
-          </div>
+        {/* Right Section (Image) */}
+        <div className="w-full lg:w-1/2 flex justify-center">
+          <Image
+            src="/home.png"
+            alt="Featured Book"
+            className="object-cover w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg rounded-lg shadow-lg"
+            width={500}
+            height={300}
+            priority
+          />
         </div>
       </div>
     </main>

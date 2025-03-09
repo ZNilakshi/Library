@@ -130,25 +130,20 @@ export default function BookPage({ params }: { params: Params }) {
         />
       </div>
 
-      <div className="relative z-10 px-8 py-12 bg-gray-50 min-h-screen">
-        <div className="bg-gray-100 py-2 px-4 mb-8 rounded-lg shadow-md">
-          <nav className="text-gray-600 text-sm font-semibold">
-            <a href={`/categories/${category}`} className="hover:text-gray-800">
-              BACK TO {category.toUpperCase()}
-            </a>
-          </nav>
-        </div>
+      <div className="relative z-10   min-h-screen">
+       
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 bg-white p-8 rounded-xl shadow-lg">
           <div className="flex justify-center">
           <Image
   src={book.coverImageUrl}
   alt={book.title}
-  width={300}    // Specify a width
-  height={450}   // Specify a height
-  className="w-2/3 lg:w-1/3 h-auto object-contain rounded-lg"
-  priority       // Optional: can be used for important images to load faster
+  width={400}    // Increased width
+  height={600}   // Increased height
+  className="w-full md:w-full lg:w-full xl:w-full h-auto object-contain rounded-lg"
+  priority
 />
+
           </div>
 
           <div className="flex flex-col justify-between">

@@ -71,17 +71,12 @@ export default function CategoryPage({ params }: CategoryPageProps) {
       {/* Content */}
       <div className="relative z-10">
         {/* Breadcrumb */}
-        <div className="mb-4 text-sm font-semibold text-gray-300">
-          <Link href="/categories" className="text-gray-100 hover:text-white uppercase">
-            Categories
-          </Link>
-          <span className="mx-2 text-white"> &gt; </span>
-          <span className="text-white uppercase">{category}</span>
-        </div>
 
-        <h1 className="text-2xl font-bold mb-4 text-white">
-          {category.charAt(0).toUpperCase() + category.slice(1)} Books
-        </h1>
+
+        <h1 className="text-3xl font-bold mb-4 text-white">
+  {category.toUpperCase()} BOOKS
+</h1>
+
 
         {/* Books grid */}
         {loading ? (
@@ -91,7 +86,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
             {books.map((book) => (
               <div
                 key={book._id}
-                className="relative z-10 block bg-white p-4 rounded-lg border border-gray-300 shadow-lg hover:shadow-2xl transition-shadow duration-200"
+                className="relative z-10 block bg-white p-4 rounded-lg border border-gray-300 shadow-lg  mt-4 hover:shadow-2xl transition-shadow duration-200"
               >
                 <Link href={`/categories/${category}/${book._id}`}>
                   {/* Use Next.js <Image /> instead of <img> */}
